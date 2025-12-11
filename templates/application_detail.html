@@ -1,0 +1,735 @@
+{% extends "base.html" %}
+
+{% block title %}Application {{ application.application_ref }} - RMIT NeoBank{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('list_applications') }}">Applications</a></li>
+        <li class="breadcrumb-item active">{{ application.application_ref }}</li>
+    </ol>
+</nav>
+
+<!-- Security Mode Alert -->
+{% if vulnerable_view %}
+<div class="alert alert-danger shadow-sm" role="alert">
+    <h5 class="alert-heading">
+        <i class="bi bi-exclamation-triangle-fill"></i> ⚠️ VULNERABLE VIEW MODE
+    </h5>
+    <p><strong>Demonstrated Vulnerabilities:</strong></p>
+    <ul class="mb-0">
+        <li><strong>IDOR (Insecure Direct Object Reference):</strong> No branch-based access control. 
+            Any logged-in user can view this application by knowing/guessing its ID.</li>
+        <li><strong>Stored XSS:</strong> Remarks field rendered with <code>|safe</code> filter. 
+            Malicious JavaScript in remarks will execute in your browser.</li>
+    </ul>
+    <hr>
+    <p class="mb-0">
+        <a href="{{ url_for('view_application', app_id=application.id) }}" class="btn btn-success btn-sm">
+            <i class="bi bi-shield-check"></i> Switch to Secure View
+        </a>
+    </p>
+</div>
+{% else %}
+<div class="alert alert-success shadow-sm" role="alert">
+    <h5 class="alert-heading">
+        <i class="bi bi-shield-check-fill"></i> ✅ SECURE VIEW MODE
+    </h5>
+    <p><strong>Active Security Controls:</strong></p>
+    <ul class="mb-0">
+        <li><strong>RBAC Enforcement:</strong> Branch officers can only view their branch's applications. HO officers can view all.</li>
+        <li><strong>XSS Prevention:</strong> All user content (including remarks) is auto-escaped by Jinja2.</li>
+    </ul>
+    <hr>
+    <p class="mb-0">
+        <a href="{{ url_for('vulnerable_view_application', app_id=application.id) }}" class="btn btn-danger btn-sm">
+            <i class="bi bi-bug"></i> Switch to Vulnerable View (Demo)
+        </a>
+    </p>
+</div>
+{% endif %}
+
+<!-- Application Header -->
+<div class="card mb-4 border-primary">
+    <div class="card-header bg-primary text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">
+                <i class="bi bi-file-earmark-text"></i> {{ application.application_ref }}
+            </h4>
+            <div>
+                {% if application.status == 'APPROVED' %}
+                    <span class="badge bg-success fs-6">
+                        <i class="bi bi-check-circle"></i> {{ application.status }}
+                    </span>
+                {% elif application.status == 'REJECTED' %}
+                    <span class="badge bg-danger fs-6">
+                        <i class="bi bi-x-circle"></i> {{ application.status }}
+                    </span>
+                {% elif application.status == 'DRAFT' %}
+                    <span class="badge bg-warning text-dark fs-6">
+                        <i class="bi bi-pencil"></i> {{ application.status }}
+                    </span>
+                {% else %}
+                    <span class="badge bg-secondary fs-6">{{ application.status }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content Row -->
+<div class="row g-4">
+    <!-- Left Column: Applicant & Loan Details -->
+    <div class="col-md-6">
+        <!-- Applicant Information -->
+        <div class="card h-100">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-person"></i> Applicant Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless">
+                    <tr>
+                        <td class="text-muted" style="width: 40%;"><i class="bi bi-person-badge"></i> Full Name:</td>
+                        <td><strong>{{ application.applicant_name }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><i class="bi bi-credit-card-2-front"></i> National ID:</td>
+                        <td><code>{{ application.national_id }}</code></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><i class="bi bi-calendar"></i> Date of Birth:</td>
+                        <td>{{ application.dob.strftime("%Y-%m-%d") }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><i class="bi bi-telephone"></i> Phone:</td>
+                        <td>{{ application.contact_phone }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><i class="bi bi-envelope"></i> Email:</td>
+                        <td>{{ application.contact_email }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column: Loan Details -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-cash-stack"></i> Loan Details
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless">
+                    <tr>
+                        <td class="text-muted" style="width: 40%;"><i class="bi bi-tag"></i> Product:</td>
+                        <td><span class="badge bg-secondary">{{ application.product_code }}</span></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><i class="bi bi-currency-exchange"></i> Amount:</td>
+                        <td><strong class="text-success">{{ "{:,.0f}".format(application.requested_amount) }} VND</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><i class="bi bi-calendar-range"></i> Tenure:</td>
+                        <td>{{ application.tenure_months }} months</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><i class="bi bi-building"></i> Branch:</td>
+                        <td><span class="badge bg-info">{{ application.branch_code }}</span></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><i class="bi bi-person-check"></i> Created By:</td>
+                        <td>{{ application.created_by.full_name }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><i class="bi bi-clock"></i> Created:</td>
+                        <td>{{ application.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><i class="bi bi-clock-history"></i> Updated:</td>
+                        <td>{{ application.updated_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Remarks Section (XSS Demo Area) -->
+<div class="row g-4 mt-2">
+    <div class="col-12">
+        <div class="card {% if vulnerable_view %}border-danger{% else %}border-success{% endif %}">
+            <div class="card-header {% if vulnerable_view %}bg-danger{% else %}bg-success{% endif %} text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-chat-left-text"></i> Remarks / Notes
+                    {% if vulnerable_view %}
+                        <span class="badge bg-light text-danger ms-2">VULNERABLE (XSS)</span>
+                    {% else %}
+                        <span class="badge bg-light text-success ms-2">SECURE (Escaped)</span>
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if application.remarks %}
+                    <div class="remarks-content p-3 border rounded bg-light">
+                        {% if vulnerable_view %}
+                            {# VULNERABLE: Renders HTML/JavaScript without escaping (XSS) #}
+                            {{ application.remarks | safe }}
+                        {% else %}
+                            {# SECURE: Auto-escaped by Jinja2 (XSS prevented) #}
+                            {{ application.remarks }}
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Security Explanation -->
+                    <div class="alert {% if vulnerable_view %}alert-danger{% else %}alert-success{% endif %} mt-3 mb-0" role="alert">
+                        <small>
+                            {% if vulnerable_view %}
+                                <strong><i class="bi bi-bug"></i> VULNERABLE CODE:</strong> 
+                                <code>{{ "{{ application.remarks | safe }}" }}</code><br>
+                                The <code>|safe</code> filter disables Jinja2's auto-escaping. If remarks contain 
+                                <code>&lt;script&gt;</code> tags, they will execute in the browser (Stored XSS).
+                            {% else %}
+                                <strong><i class="bi bi-shield-check"></i> SECURE CODE:</strong> 
+                                <code>{{ "{{ application.remarks }}" }}</code><br>
+                                Jinja2 auto-escapes all HTML/JavaScript by default. Special characters like 
+                                <code>&lt;</code> <code>&gt;</code> are converted to HTML entities, preventing XSS.
+                            {% endif %}
+                        </small>
+                    </div>
+                {% else %}
+                    <p class="text-muted mb-0"><em>No remarks entered.</em></p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Credit Checks Section -->
+<div class="row g-4 mt-2">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-graph-up"></i> Credit Bureau Checks
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if application.credit_checks %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Bureau Reference</th>
+                                    <th>Score</th>
+                                    <th>Risk Band</th>
+                                    <th>Status</th>
+                                    <th>Requested By</th>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cc in application.credit_checks %}
+                                <tr>
+                                    <td><code class="text-primary">{{ cc.bureau_reference or 'N/A' }}</code></td>
+                                    <td>
+                                        {% if cc.score %}
+                                            <strong>{{ cc.score }}</strong> / 900
+                                        {% else %}
+                                            <span class="text-muted">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if cc.risk_band == 'LOW' %}
+                                            <span class="badge bg-success">LOW</span>
+                                        {% elif cc.risk_band == 'MEDIUM' %}
+                                            <span class="badge bg-warning text-dark">MEDIUM</span>
+                                        {% elif cc.risk_band == 'HIGH' %}
+                                            <span class="badge bg-danger">HIGH</span>
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if cc.status == 'COMPLETED' else 'warning' }}">
+                                            {{ cc.status }}
+                                        </span>
+                                    </td>
+                                    <td>{{ cc.requested_by.full_name }}</td>
+                                    <td>{{ cc.requested_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                                    <td>
+                                        {% if cc.raw_response %}
+                                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                data-bs-toggle="modal" data-bs-target="#bureauModal{{ cc.id }}">
+                                            <i class="bi bi-eye"></i> View Report
+                                        </button>
+                                        
+                                        <!-- Modal for Bureau Report -->
+                                        <div class="modal fade" id="bureauModal{{ cc.id }}" tabindex="-1">
+                                            <div class="modal-dialog modal-lg">
+                                                <div class="modal-content">
+                                                    <div class="modal-header bg-primary text-white">
+                                                        <h5 class="modal-title">Credit Bureau Report</h5>
+                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <pre class="bg-light p-3 border rounded">{{ cc.raw_response }}</pre>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted mb-0">
+                        <i class="bi bi-info-circle"></i> No credit checks performed yet.
+                    </p>
+                {% endif %}
+                
+                <!-- Trigger Credit Check Button (HO Only, Secure View Only) -->
+                {% if current_user.role in [Role.HO_OFFICER, Role.ADMIN] and not vulnerable_view %}
+                <div class="mt-3">
+                    <form method="post" action="{{ url_for('trigger_credit_check', app_id=application.id) }}" 
+                          onsubmit="return confirm('Trigger credit bureau check for this application? This action will be logged.');">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-cloud-arrow-up"></i> Trigger Credit Bureau Check (Secure)
+                        </button>
+                    </form>
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i> 
+                        Simulates external API call to credit bureau (e.g., CIC). Score determines auto-decision.
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CIC (Credit Information Center) Section -->
+<div class="row g-4 mt-2">
+    <div class="col-12">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-bank2"></i> CIC Credit Information Center
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if application.cic_check_status == 'COMPLETED' %}
+                    <!-- CIC Check Completed -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-success"><i class="bi bi-check-circle"></i> CIC Check Completed</h6>
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <td class="text-muted" style="width: 50%;">Bureau Reference:</td>
+                                    <td><code class="text-success">{{ application.cic_bureau_reference }}</code></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Credit Score:</td>
+                                    <td>
+                                        <strong class="fs-4 
+                                            {% if application.cic_credit_score >= 800 %}text-success
+                                            {% elif application.cic_credit_score >= 740 %}text-info
+                                            {% elif application.cic_credit_score >= 670 %}text-primary
+                                            {% elif application.cic_credit_score >= 580 %}text-warning
+                                            {% else %}text-danger
+                                            {% endif %}">
+                                            {{ application.cic_credit_score }}
+                                        </strong>
+                                        <span class="text-muted">/ 900</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Risk Category:</td>
+                                    <td>
+                                        {% if application.cic_risk_category == 'LOW' %}
+                                            <span class="badge bg-success fs-6">🟢 LOW RISK</span>
+                                        {% elif application.cic_risk_category == 'MEDIUM' %}
+                                            <span class="badge bg-warning text-dark fs-6">🟡 MEDIUM RISK</span>
+                                        {% elif application.cic_risk_category == 'HIGH' %}
+                                            <span class="badge bg-orange fs-6" style="background-color: #fd7e14;">🟠 HIGH RISK</span>
+                                        {% else %}
+                                            <span class="badge bg-danger fs-6">🔴 SEVERE RISK</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Checked By:</td>
+                                    <td>{{ application.cic_checked_by.full_name if application.cic_checked_by else 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Checked At:</td>
+                                    <td>{{ application.cic_checked_at.strftime("%Y-%m-%d %H:%M") if application.cic_checked_at else 'N/A' }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-success"><i class="bi bi-lightbulb"></i> Recommendation</h6>
+                            <div class="alert 
+                                {% if application.cic_risk_category == 'LOW' %}alert-success
+                                {% elif application.cic_risk_category == 'MEDIUM' %}alert-info
+                                {% elif application.cic_risk_category == 'HIGH' %}alert-warning
+                                {% else %}alert-danger
+                                {% endif %} mb-3">
+                                {{ application.cic_recommendation }}
+                            </div>
+                            
+                            <h6 class="text-muted"><i class="bi bi-list-stars"></i> Key Factors</h6>
+                            <p class="text-muted small mb-3">{{ application.cic_key_factors }}</p>
+                            
+                            <a href="{{ url_for('view_cic_credit_report', app_id=application.id) }}" 
+                               class="btn btn-success btn-sm">
+                                <i class="bi bi-file-earmark-text"></i> View Full CIC Credit Report
+                            </a>
+                        </div>
+                    </div>
+                {% elif application.cic_check_status == 'NOT_FOUND' %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>No CIC Record Found</strong> - Customer has no credit history in CIC database. 
+                        May be first-time borrower.
+                    </div>
+                {% elif application.cic_check_status == 'FAILED' %}
+                    <div class="alert alert-danger">
+                        <i class="bi bi-x-circle"></i>
+                        <strong>CIC Check Failed</strong> - Error occurred during credit check. Please try again.
+                    </div>
+                {% else %}
+                    <p class="text-muted mb-3">
+                        <i class="bi bi-info-circle"></i> No CIC credit check performed yet.
+                    </p>
+                {% endif %}
+                
+                <!-- Trigger CIC Check Button (Expert/HO Only) -->
+                {% if current_user.role in ['approval_expert', 'branch_ho', 'super_admin'] and not vulnerable_view %}
+                {% if application.cic_check_status not in ['COMPLETED', 'NOT_FOUND'] %}
+                <div class="mt-3">
+                    <form method="post" action="{{ url_for('perform_cic_credit_check', app_id=application.id) }}" 
+                          onsubmit="return confirm('Perform CIC credit check for this applicant? This will query the Credit Information Center database.');">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-bank2"></i> Request CIC Credit Check
+                        </button>
+                    </form>
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i> 
+                        Queries Vietnam Credit Information Center for comprehensive credit history, 
+                        score calculation (300-900), payment behavior, assets, and lending recommendation.
+                    </small>
+                </div>
+                {% elif application.cic_check_status == 'COMPLETED' %}
+                <div class="mt-3">
+                    <form method="post" action="{{ url_for('perform_cic_credit_check', app_id=application.id) }}" 
+                          onsubmit="return confirm('Re-run CIC credit check? This will update the credit score and recommendation.');">
+                        <button type="submit" class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh CIC Data
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 3-TIER WORKFLOW MANAGEMENT -->
+{% if not vulnerable_view %}
+<div class="row g-4 mt-2">
+    <div class="col-12">
+        
+        <!-- BRANCH OFFICER: Submit Application (DRAFT → PENDING_EXPERT_REVIEW) -->
+        {% if current_user.role == 'branch_officer' and application.status == 'DRAFT' %}
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-send"></i> Submit Application for Expert Review
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-3">
+                    <i class="bi bi-info-circle"></i> 
+                    This will submit the application to the Approval Expert for credit assessment.
+                </p>
+                <form method="post" action="{{ url_for('update_application_status', app_id=application.id) }}" 
+                      onsubmit="return confirm('Submit this application to Expert for review?');">
+                    <input type="hidden" name="status" value="PENDING_EXPERT_REVIEW">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-send-check"></i> Submit to Expert Review
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- BRANCH OFFICER: Resubmit after Returned to Branch -->
+        {% if current_user.role == 'branch_officer' and application.status == 'RETURNED_TO_BRANCH' %}
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="bi bi-arrow-counterclockwise"></i> Resubmit Application
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-3">
+                    <i class="bi bi-exclamation-triangle"></i> 
+                    This application was returned for corrections. Please review the comments and resubmit.
+                </p>
+                <form method="post" action="{{ url_for('update_application_status', app_id=application.id) }}" 
+                      onsubmit="return confirm('Resubmit this application to Expert for review?');">
+                    <input type="hidden" name="status" value="PENDING_EXPERT_REVIEW">
+                    <button type="submit" class="btn btn-warning btn-lg">
+                        <i class="bi bi-send-check"></i> Resubmit to Expert Review
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- APPROVAL EXPERT: Review Application (PENDING_EXPERT_REVIEW → PENDING_HO_APPROVAL or RETURNED_TO_BRANCH) -->
+        {% if current_user.role == 'approval_expert' and application.status == 'PENDING_EXPERT_REVIEW' %}
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-clipboard-check"></i> Expert Review Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-3">
+                    <i class="bi bi-info-circle"></i> 
+                    Review credit checks and application details. Approve to send to Branch HO for final decision, or return to Branch for corrections.
+                </p>
+                
+                <div class="row g-3">
+                    <!-- Approve and Send to HO -->
+                    <div class="col-md-6">
+                        <div class="card border-success h-100">
+                            <div class="card-body">
+                                <h6 class="text-success"><i class="bi bi-check-circle"></i> Approve & Forward to HO</h6>
+                                <p class="small text-muted">Send to Branch HO for final approval</p>
+                                <form method="post" action="{{ url_for('update_application_status', app_id=application.id) }}" 
+                                      onsubmit="return confirm('Approve this application and send to Branch HO for final decision?');">
+                                    <input type="hidden" name="status" value="PENDING_HO_APPROVAL">
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="bi bi-check-circle"></i> Approve & Send to HO
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Return to Branch -->
+                    <div class="col-md-6">
+                        <div class="card border-warning h-100">
+                            <div class="card-body">
+                                <h6 class="text-warning"><i class="bi bi-arrow-counterclockwise"></i> Return to Branch</h6>
+                                <p class="small text-muted">Send back to Branch Officer for corrections</p>
+                                <form method="post" action="{{ url_for('update_application_status', app_id=application.id) }}" 
+                                      onsubmit="return confirm('Return this application to Branch Officer for corrections?');">
+                                    <input type="hidden" name="status" value="RETURNED_TO_BRANCH">
+                                    <button type="submit" class="btn btn-warning w-100">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Return to Branch
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- APPROVAL EXPERT: Review after Returned from HO -->
+        {% if current_user.role == 'approval_expert' and application.status == 'RETURNED_TO_EXPERT' %}
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-arrow-counterclockwise"></i> Re-Review Application
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-3">
+                    <i class="bi bi-exclamation-triangle"></i> 
+                    This application was returned by Branch HO for reassessment. Please review the HO comments and resubmit.
+                </p>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <form method="post" action="{{ url_for('update_application_status', app_id=application.id) }}" 
+                              onsubmit="return confirm('Resubmit this application to Branch HO?');">
+                            <input type="hidden" name="status" value="PENDING_HO_APPROVAL">
+                            <button type="submit" class="btn btn-info w-100">
+                                <i class="bi bi-check-circle"></i> Resubmit to HO
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <form method="post" action="{{ url_for('update_application_status', app_id=application.id) }}" 
+                              onsubmit="return confirm('Return this application to Branch Officer?');">
+                            <input type="hidden" name="status" value="RETURNED_TO_BRANCH">
+                            <button type="submit" class="btn btn-warning w-100">
+                                <i class="bi bi-arrow-counterclockwise"></i> Return to Branch
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- BRANCH HO: Final Decision (PENDING_HO_APPROVAL → APPROVED/REJECTED or RETURNED_TO_EXPERT/RETURNED_TO_BRANCH) -->
+        {% if current_user.role == 'branch_ho' and application.status == 'PENDING_HO_APPROVAL' %}
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-award"></i> Branch HO Final Decision
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-3">
+                    <i class="bi bi-info-circle"></i> 
+                    Make final decision on this application. You can approve, reject, or send back for reassessment.
+                </p>
+                
+                <div class="row g-3">
+                    <!-- Final Approval -->
+                    <div class="col-md-3">
+                        <div class="card border-success h-100">
+                            <div class="card-body text-center">
+                                <h6 class="text-success"><i class="bi bi-check-circle-fill"></i> Approve</h6>
+                                <p class="small text-muted">Final approval</p>
+                                <form method="post" action="{{ url_for('update_application_status', app_id=application.id) }}" 
+                                      onsubmit="return confirm('APPROVE this application? This is the final decision.');">
+                                    <input type="hidden" name="status" value="APPROVED">
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="bi bi-check-circle-fill"></i> APPROVE
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Final Rejection -->
+                    <div class="col-md-3">
+                        <div class="card border-danger h-100">
+                            <div class="card-body text-center">
+                                <h6 class="text-danger"><i class="bi bi-x-circle-fill"></i> Reject</h6>
+                                <p class="small text-muted">Final rejection</p>
+                                <form method="post" action="{{ url_for('update_application_status', app_id=application.id) }}" 
+                                      onsubmit="return confirm('REJECT this application? This is the final decision.');">
+                                    <input type="hidden" name="status" value="REJECTED">
+                                    <button type="submit" class="btn btn-danger w-100">
+                                        <i class="bi bi-x-circle-fill"></i> REJECT
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Return to Expert -->
+                    <div class="col-md-3">
+                        <div class="card border-info h-100">
+                            <div class="card-body text-center">
+                                <h6 class="text-info"><i class="bi bi-arrow-left-circle"></i> Return to Expert</h6>
+                                <p class="small text-muted">Need reassessment</p>
+                                <form method="post" action="{{ url_for('update_application_status', app_id=application.id) }}" 
+                                      onsubmit="return confirm('Return this application to Expert for reassessment?');">
+                                    <input type="hidden" name="status" value="RETURNED_TO_EXPERT">
+                                    <button type="submit" class="btn btn-info w-100">
+                                        <i class="bi bi-arrow-left-circle"></i> To Expert
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Return to Branch -->
+                    <div class="col-md-3">
+                        <div class="card border-warning h-100">
+                            <div class="card-body text-center">
+                                <h6 class="text-warning"><i class="bi bi-arrow-left-circle"></i> Return to Branch</h6>
+                                <p class="small text-muted">Need corrections</p>
+                                <form method="post" action="{{ url_for('update_application_status', app_id=application.id) }}" 
+                                      onsubmit="return confirm('Return this application to Branch Officer for corrections?');">
+                                    <input type="hidden" name="status" value="RETURNED_TO_BRANCH">
+                                    <button type="submit" class="btn btn-warning w-100">
+                                        <i class="bi bi-arrow-left-circle"></i> To Branch
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- SUPER ADMIN: Full Control -->
+        {% if current_user.role == 'super_admin' %}
+        <div class="card border-dark">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-shield-lock"></i> Super Admin Override
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('update_application_status', app_id=application.id) }}" 
+                      class="row g-2 align-items-end">
+                    <div class="col-md-6">
+                        <label class="form-label">Force Status Change:</label>
+                        <select name="status" class="form-select" required>
+                            <option value="" disabled selected>Select new status...</option>
+                            <option value="DRAFT">DRAFT</option>
+                            <option value="PENDING_EXPERT_REVIEW">PENDING_EXPERT_REVIEW</option>
+                            <option value="PENDING_HO_APPROVAL">PENDING_HO_APPROVAL</option>
+                            <option value="APPROVED">APPROVED</option>
+                            <option value="REJECTED">REJECTED</option>
+                            <option value="RETURNED_TO_BRANCH">RETURNED_TO_BRANCH</option>
+                            <option value="RETURNED_TO_EXPERT">RETURNED_TO_EXPERT</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-dark" onclick="return confirm('Force status change as Super Admin?');">
+                            <i class="bi bi-shield-lock"></i> Force Change
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted">
+                            <i class="bi bi-exclamation-triangle"></i> Admin override
+                        </small>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endif %}
+
+<!-- Back Button -->
+<div class="row mt-4">
+    <div class="col-12">
+        <a href="{{ url_for('list_applications') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Applications List
+        </a>
+    </div>
+</div>
+
+{% endblock %}

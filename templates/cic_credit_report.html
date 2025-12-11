@@ -1,0 +1,503 @@
+{% extends "base.html" %}
+
+{% block title %}CIC Credit Report - {{ application.applicant_name }} - RMIT NeoBank{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('list_applications') }}">Applications</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('view_application', app_id=application.id) }}">{{ application.application_ref }}</a></li>
+        <li class="breadcrumb-item active">CIC Credit Report</li>
+    </ol>
+</nav>
+
+<!-- Report Header -->
+<div class="card mb-4 border-success shadow">
+    <div class="card-header bg-success text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">
+                <i class="bi bi-bank2"></i> Vietnam Credit Information Center (CIC) Report
+            </h4>
+            <span class="badge bg-light text-dark fs-6">{{ report.customer.national_id }}</span>
+        </div>
+    </div>
+    <div class="card-body bg-light">
+        <div class="row">
+            <div class="col-md-4">
+                <h6 class="text-muted">Customer Name</h6>
+                <p class="fw-bold">{{ report.customer.full_name }}</p>
+            </div>
+            <div class="col-md-4">
+                <h6 class="text-muted">Credit Score</h6>
+                <h2 class="fw-bold 
+                    {% if report.current_score >= 800 %}text-success
+                    {% elif report.current_score >= 740 %}text-info
+                    {% elif report.current_score >= 670 %}text-primary
+                    {% elif report.current_score >= 580 %}text-warning
+                    {% else %}text-danger
+                    {% endif %}">
+                    {{ report.current_score }}
+                    <small class="text-muted fs-6">/ 900</small>
+                </h2>
+            </div>
+            <div class="col-md-4">
+                <h6 class="text-muted">Risk Category</h6>
+                <h4>
+                    {% if report.risk_category == 'LOW' %}
+                        <span class="badge bg-success">🟢 LOW RISK</span>
+                    {% elif report.risk_category == 'MEDIUM' %}
+                        <span class="badge bg-warning text-dark">🟡 MEDIUM RISK</span>
+                    {% elif report.risk_category == 'HIGH' %}
+                        <span class="badge bg-orange" style="background-color: #fd7e14;">🟠 HIGH RISK</span>
+                    {% else %}
+                        <span class="badge bg-danger">🔴 SEVERE RISK</span>
+                    {% endif %}
+                </h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Customer Profile -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-person-badge"></i> Personal Information</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless">
+                    <tr>
+                        <td class="text-muted" style="width: 40%;">Full Name:</td>
+                        <td><strong>{{ report.customer.full_name }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">National ID:</td>
+                        <td><code>{{ report.customer.national_id }}</code></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Date of Birth:</td>
+                        <td>{{ report.customer.date_of_birth.strftime("%Y-%m-%d") }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Gender:</td>
+                        <td>{{ report.customer.gender or 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Phone:</td>
+                        <td>{{ report.customer.phone_number or 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Email:</td>
+                        <td>{{ report.customer.email or 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">City/Province:</td>
+                        <td>{{ report.customer.province_city or 'N/A' }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-briefcase"></i> Employment & Income</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless">
+                    <tr>
+                        <td class="text-muted" style="width: 40%;">Employment Status:</td>
+                        <td><span class="badge bg-secondary">{{ report.customer.employment_status or 'N/A' }}</span></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Occupation:</td>
+                        <td>{{ report.customer.occupation or 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Employer:</td>
+                        <td>{{ report.customer.employer_name or 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Years Employed:</td>
+                        <td>{{ report.customer.years_employed or 'N/A' }} years</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Monthly Income:</td>
+                        <td>
+                            {% if report.customer.monthly_income %}
+                                <strong class="text-success">{{ "{:,.0f}".format(report.customer.monthly_income) }} VND</strong>
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Financial Summary -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="bi bi-graph-up-arrow"></i> Financial Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <h6 class="text-muted">Total Outstanding Debt</h6>
+                        <h4 class="text-danger">{{ "{:,.0f}".format(report.customer.total_outstanding_debt) }} VND</h4>
+                    </div>
+                    <div class="col-md-3">
+                        <h6 class="text-muted">Total Credit Limit</h6>
+                        <h4 class="text-primary">{{ "{:,.0f}".format(report.customer.total_credit_limit) }} VND</h4>
+                    </div>
+                    <div class="col-md-3">
+                        <h6 class="text-muted">Total Assets Value</h6>
+                        <h4 class="text-success">{{ "{:,.0f}".format(report.customer.total_assets_value) }} VND</h4>
+                    </div>
+                    <div class="col-md-3">
+                        <h6 class="text-muted">Credit Utilization</h6>
+                        <h4 class="text-info">
+                            {% if report.customer.total_credit_limit > 0 %}
+                                {{ "{:.1f}".format((report.customer.total_outstanding_debt / report.customer.total_credit_limit) * 100) }}%
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </h4>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <h6 class="text-muted">Active Accounts</h6>
+                        <h5 class="text-success">{{ report.customer.number_of_active_accounts }}</h5>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-muted">Closed Accounts</h6>
+                        <h5 class="text-secondary">{{ report.customer.number_of_closed_accounts }}</h5>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-muted">Delinquent Accounts</h6>
+                        <h5 class="text-danger">{{ report.customer.number_of_delinquent_accounts }}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Credit Accounts -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-credit-card"></i> Credit Accounts ({{ report.accounts|length }})</h5>
+            </div>
+            <div class="card-body">
+                {% if report.accounts %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Lender</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Original Amount</th>
+                                <th>Current Balance</th>
+                                <th>Monthly Payment</th>
+                                <th>Days Past Due</th>
+                                <th>Payment History</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for account in report.accounts %}
+                            <tr>
+                                <td>{{ account.lender_name }}</td>
+                                <td><span class="badge bg-info">{{ account.account_type.replace('_', ' ') }}</span></td>
+                                <td>
+                                    {% if account.account_status == 'CURRENT' or account.account_status == 'ACTIVE' %}
+                                        <span class="badge bg-success">{{ account.account_status }}</span>
+                                    {% elif account.account_status == 'CLOSED' %}
+                                        <span class="badge bg-secondary">CLOSED</span>
+                                    {% elif 'DELINQUENT' in account.account_status %}
+                                        <span class="badge bg-danger">{{ account.account_status }}</span>
+                                    {% elif account.account_status == 'DEFAULT' %}
+                                        <span class="badge bg-dark">DEFAULT</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">{{ account.account_status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ "{:,.0f}".format(account.original_loan_amount) }}</td>
+                                <td>
+                                    <strong class="{% if account.current_balance > 0 %}text-danger{% else %}text-success{% endif %}">
+                                        {{ "{:,.0f}".format(account.current_balance) }}
+                                    </strong>
+                                </td>
+                                <td>{{ "{:,.0f}".format(account.monthly_payment) if account.monthly_payment else 'N/A' }}</td>
+                                <td>
+                                    {% if account.days_past_due > 0 %}
+                                        <span class="badge bg-danger">{{ account.days_past_due }} days</span>
+                                    {% else %}
+                                        <span class="text-success">Current</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if account.total_payments_made > 0 %}
+                                        <span class="text-success">{{ account.on_time_payments }}</span> / 
+                                        {{ account.total_payments_made }}
+                                        <small class="text-muted">({{ "{:.0f}".format((account.on_time_payments / account.total_payments_made) * 100) }}%)</small>
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No credit accounts found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assets -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-house-heart"></i> Assets & Collateral ({{ report.assets|length }})</h5>
+            </div>
+            <div class="card-body">
+                {% if report.assets %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Asset Type</th>
+                                <th>Description</th>
+                                <th>Location</th>
+                                <th>Estimated Value</th>
+                                <th>Encumbered</th>
+                                <th>Encumbrance Amount</th>
+                                <th>Net Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for asset in report.assets %}
+                            <tr>
+                                <td><span class="badge bg-secondary">{{ asset.asset_type.replace('_', ' ') }}</span></td>
+                                <td>{{ asset.asset_description or 'N/A' }}</td>
+                                <td>{{ asset.asset_location or 'N/A' }}</td>
+                                <td><strong>{{ "{:,.0f}".format(asset.estimated_value) }} VND</strong></td>
+                                <td>
+                                    {% if asset.is_encumbered %}
+                                        <span class="badge bg-warning text-dark">YES</span>
+                                    {% else %}
+                                        <span class="badge bg-success">NO</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if asset.encumbrance_amount %}
+                                        <span class="text-danger">{{ "{:,.0f}".format(asset.encumbrance_amount) }} VND</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong class="text-success">
+                                        {{ "{:,.0f}".format(asset.estimated_value - (asset.encumbrance_amount or 0)) }} VND
+                                    </strong>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No registered assets.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Credit Inquiries -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="bi bi-search"></i> Recent Credit Inquiries (Last 10)</h5>
+            </div>
+            <div class="card-body">
+                {% if report.inquiries %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Institution</th>
+                                <th>Purpose</th>
+                                <th>Requested Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inquiry in report.inquiries %}
+                            <tr>
+                                <td>{{ inquiry.inquiry_date.strftime("%Y-%m-%d %H:%M") }}</td>
+                                <td>
+                                    {% if inquiry.inquiry_type == 'HARD_INQUIRY' %}
+                                        <span class="badge bg-danger">HARD INQUIRY</span>
+                                    {% else %}
+                                        <span class="badge bg-info">{{ inquiry.inquiry_type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ inquiry.inquiring_institution }}</td>
+                                <td>{{ inquiry.inquiry_purpose or 'N/A' }}</td>
+                                <td>
+                                    {% if inquiry.loan_amount_requested %}
+                                        {{ "{:,.0f}".format(inquiry.loan_amount_requested) }} VND
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Note:</strong> Multiple hard inquiries in short period may indicate credit-seeking behavior and negatively impact credit score.
+                </div>
+                {% else %}
+                <p class="text-muted">No recent credit inquiries.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Public Records -->
+{% if report.public_records %}
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Public Records</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Type</th>
+                                <th>Filing Date</th>
+                                <th>Status</th>
+                                <th>Court/Agency</th>
+                                <th>Amount</th>
+                                <th>Resolution Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in report.public_records %}
+                            <tr>
+                                <td><span class="badge bg-danger">{{ record.record_type }}</span></td>
+                                <td>{{ record.filing_date.strftime("%Y-%m-%d") }}</td>
+                                <td>{{ record.status }}</td>
+                                <td>{{ record.court_name or 'N/A' }}</td>
+                                <td>{{ "{:,.0f}".format(record.amount) if record.amount else 'N/A' }} VND</td>
+                                <td>{{ record.resolution_date.strftime("%Y-%m-%d") if record.resolution_date else 'Unresolved' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Credit Score History -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Credit Score History (Last 12 Months)</h5>
+            </div>
+            <div class="card-body">
+                {% if report.score_history %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Score</th>
+                                <th>Risk Category</th>
+                                <th>Change</th>
+                                <th>Primary Factor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for history in report.score_history %}
+                            <tr>
+                                <td>{{ history.score_date.strftime("%Y-%m-%d") }}</td>
+                                <td><strong>{{ history.score }}</strong></td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if history.risk_category == 'LOW' else 'warning' if history.risk_category == 'MEDIUM' else 'danger' }}">
+                                        {{ history.risk_category }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if not loop.last %}
+                                        {% set prev_score = report.score_history[loop.index].score %}
+                                        {% set change = history.score - prev_score %}
+                                        {% if change > 0 %}
+                                            <span class="text-success">+{{ change }}</span> ⬆️
+                                        {% elif change < 0 %}
+                                            <span class="text-danger">{{ change }}</span> ⬇️
+                                        {% else %}
+                                            <span class="text-muted">0</span>
+                                        {% endif %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-muted small">{{ history.primary_factor or 'N/A' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No score history available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="row">
+    <div class="col-12">
+        <a href="{{ url_for('view_application', app_id=application.id) }}" class="btn btn-primary">
+            <i class="bi bi-arrow-left"></i> Back to Application
+        </a>
+        <button onclick="window.print()" class="btn btn-secondary">
+            <i class="bi bi-printer"></i> Print Report
+        </button>
+    </div>
+</div>
+
+{% endblock %}

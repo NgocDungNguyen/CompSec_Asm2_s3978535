@@ -1,0 +1,206 @@
+================================================================================
+                    RMIT NEOBANK - TEST USER ACCOUNTS
+                         3-TIER WORKFLOW SYSTEM
+================================================================================
+
+📋 TOTAL USERS: 62
+🔐 DEFAULT PASSWORD FOR ALL ACCOUNTS: Password123
+
+================================================================================
+1️⃣  SUPER ADMIN (Global Access - All Branches)
+================================================================================
+
+Username: superadmin
+Password: Password123
+Role: SUPER_ADMIN
+Branch: HEAD_OFFICE
+Access: Can see and manage ALL applications from ALL branches
+
+================================================================================
+2️⃣  BRANCH OFFICERS (Create Applications)
+================================================================================
+
+HCM01 - Ho Chi Minh District 1 Branch:
+  • bo_hcm01_1 / Password123
+  • bo_hcm01_2 / Password123
+
+HCM02 - Ho Chi Minh District 7 Branch:
+  • bo_hcm02_1 / Password123
+  • bo_hcm02_2 / Password123
+
+HN01 - Hanoi Hoan Kiem Branch:
+  • bo_hn01_1 / Password123
+  • bo_hn01_2 / Password123
+
+HN02 - Hanoi Cau Giay Branch:
+  • bo_hn02_1 / Password123
+  • bo_hn02_2 / Password123
+
+HN03 - Hanoi Dong Da Branch:
+  • bo_hn03_1 / Password123
+  • bo_hn03_2 / Password123
+
+DN01 - Da Nang Hai Chau Branch:
+  • bo_dn01_1 / Password123
+  • bo_dn01_2 / Password123
+
+DN02 - Da Nang Son Tra Branch:
+  • bo_dn02_1 / Password123
+  • bo_dn02_2 / Password123
+
+CT01 - Can Tho Ninh Kieu Branch:
+  • bo_ct01_1 / Password123
+  • bo_ct01_2 / Password123
+
+HP01 - Hai Phong Hong Bang Branch:
+  • bo_hp01_1 / Password123
+  • bo_hp01_2 / Password123
+
+Total Branch Officers: 18
+
+================================================================================
+3️⃣  APPROVAL EXPERTS (Grade & Review Applications)
+================================================================================
+
+HCM01 - Ho Chi Minh District 1 Branch:
+  • expert_hcm01_1 / Password123
+  • expert_hcm01_2 / Password123
+  • expert_hcm01_3 / Password123
+
+HCM02 - Ho Chi Minh District 7 Branch:
+  • expert_hcm02_1 / Password123
+  • expert_hcm02_2 / Password123
+  • expert_hcm02_3 / Password123
+
+HN01 - Hanoi Hoan Kiem Branch:
+  • expert_hn01_1 / Password123
+  • expert_hn01_2 / Password123
+  • expert_hn01_3 / Password123
+
+HN02 - Hanoi Cau Giay Branch:
+  • expert_hn02_1 / Password123
+  • expert_hn02_2 / Password123
+  • expert_hn02_3 / Password123
+
+HN03 - Hanoi Dong Da Branch:
+  • expert_hn03_1 / Password123
+  • expert_hn03_2 / Password123
+  • expert_hn03_3 / Password123
+
+DN01 - Da Nang Hai Chau Branch:
+  • expert_dn01_1 / Password123
+  • expert_dn01_2 / Password123
+  • expert_dn01_3 / Password123
+
+DN02 - Da Nang Son Tra Branch:
+  • expert_dn02_1 / Password123
+  • expert_dn02_2 / Password123
+  • expert_dn02_3 / Password123
+
+CT01 - Can Tho Ninh Kieu Branch:
+  • expert_ct01_1 / Password123
+  • expert_ct01_2 / Password123
+  • expert_ct01_3 / Password123
+
+HP01 - Hai Phong Hong Bang Branch:
+  • expert_hp01_1 / Password123
+  • expert_hp01_2 / Password123
+  • expert_hp01_3 / Password123
+
+Total Approval Experts: 27
+
+================================================================================
+4️⃣  BRANCH HO (Final Approver)
+================================================================================
+
+HCM01 - Ho Chi Minh District 1 Branch:
+  • ho_hcm01_1 / Password123
+  • ho_hcm01_2 / Password123
+
+HCM02 - Ho Chi Minh District 7 Branch:
+  • ho_hcm02_1 / Password123
+  • ho_hcm02_2 / Password123
+
+HN01 - Hanoi Hoan Kiem Branch:
+  • ho_hn01_1 / Password123
+  • ho_hn01_2 / Password123
+
+HN02 - Hanoi Cau Giay Branch:
+  • ho_hn02_1 / Password123
+  • ho_hn02_2 / Password123
+
+HN03 - Hanoi Dong Da Branch:
+  • ho_hn03_1 / Password123
+  • ho_hn03_2 / Password123
+
+DN01 - Da Nang Hai Chau Branch:
+  • ho_dn01_1 / Password123
+  • ho_dn01_2 / Password123
+
+DN02 - Da Nang Son Tra Branch:
+  • ho_dn02_1 / Password123
+  • ho_dn02_2 / Password123
+
+CT01 - Can Tho Ninh Kieu Branch:
+  • ho_ct01_1 / Password123
+
+HP01 - Hai Phong Hong Bang Branch:
+  • ho_hp01_1 / Password123
+
+Total Branch HO: 16
+
+================================================================================
+📊 SUMMARY
+================================================================================
+
+Total Users: 62
+- 1 SUPER_ADMIN (global access)
+- 18 Branch Officers (2 per branch)
+- 27 Approval Experts (3 per branch)
+- 16 Branch HO (1-2 per branch)
+
+Total Branches: 9
+- HCM01, HCM02 (Ho Chi Minh City)
+- HN01, HN02, HN03 (Hanoi)
+- DN01, DN02 (Da Nang)
+- CT01 (Can Tho)
+- HP01 (Hai Phong)
+
+Total Applications: 468 (distributed across all branches)
+
+================================================================================
+🔑 RECOMMENDED TEST ACCOUNTS
+================================================================================
+
+For quick testing, use these accounts:
+
+1. SUPER_ADMIN (See everything):
+   Username: superadmin
+   Password: Password123
+
+2. BRANCH_OFFICER (Create applications):
+   Username: bo_hcm01_1
+   Password: Password123
+
+3. APPROVAL_EXPERT (Grade & review):
+   Username: expert_hcm01_1
+   Password: Password123
+
+4. BRANCH_HO (Final approval):
+   Username: ho_hcm01_1
+   Password: Password123
+
+================================================================================
+🌐 ACCESS THE SYSTEM
+================================================================================
+
+1. Start the application:
+   flask run
+
+2. Open browser:
+   http://127.0.0.1:5000
+
+3. View all accounts with quick login:
+   http://127.0.0.1:5000/test-accounts
+
+================================================================================

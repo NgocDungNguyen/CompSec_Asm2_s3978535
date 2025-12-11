@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}Loan Applications - RMIT NeoBank{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-file-earmark-text"></i> Loan Applications
+    </h2>
+    <a href="{{ url_for('new_application') }}" class="btn btn-success">
+        <i class="bi bi-plus-circle"></i> New Application
+    </a>
+</div>
+
+<!-- Search and Filter Bar -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-center">
+            <div class="col-md-5">
+                <label for="searchQuery" class="form-label">
+                    <i class="bi bi-search"></i> Search Applications
+                </label>
+                <input type="text" class="form-control" id="searchQuery" name="q" 
+                       value="{{ search_query }}" placeholder="CIF number, applicant name, or national ID...">
+                <small class="text-muted">Search by CIF (e.g., CIFHCM01123456), name, or national ID</small>
+            </div>
+            <div class="col-md-4 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Search (Secure)
+                </button>
+                <a href="{{ url_for('list_applications') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Clear
+                </a>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <a href="{{ url_for('vulnerable_search') }}" class="btn btn-outline-danger w-100">
+                    <i class="bi bi-bug"></i> Vulnerable SQL Demo
+                </a>
+            </div>
+        </form>
+        
+        <!-- Security Notice -->
+        <div class="alert alert-info mt-3 mb-0" role="alert">
+            <small>
+                <i class="bi bi-shield-check"></i>
+                <strong>Secure Search:</strong> This search uses parameterized queries via SQLAlchemy ORM, 
+                preventing SQL injection attacks. Compare with the vulnerable endpoint.
+            </small>
+        </div>
+    </div>
+</div>
+
+<!-- Applications Table -->
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-list-ul"></i> Applications List
+            <span class="badge bg-light text-dark ms-2">{{ applications | length }} records</span>
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        {% if applications %}
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ref</th>
+                        <th>Applicant</th>
+                        <th>Product</th>
+                        <th>Amount (VND)</th>
+                        <th>Branch</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in applications %}
+                    <tr>
+                        <td>
+                            <code class="text-primary">{{ app.application_ref }}</code>
+                        </td>
+                        <td>
+                            <strong>{{ app.applicant_name }}</strong><br>
+                            <small class="text-muted">ID: {{ app.national_id }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ app.product_code }}</span>
+                        </td>
+                        <td class="text-end">
+                            <strong>{{ "{:,.0f}".format(app.requested_amount) }}</strong><br>
+                            <small class="text-muted">{{ app.tenure_months }} months</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-info">{{ app.branch_code }}</span>
+                        </td>
+                        <td>
+                            {% if app.status == 'APPROVED' %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle"></i> {{ app.status }}
+                                </span>
+                            {% elif app.status == 'REJECTED' %}
+                                <span class="badge bg-danger">
+                                    <i class="bi bi-x-circle"></i> {{ app.status }}
+                                </span>
+                            {% elif app.status == 'DRAFT' %}
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-pencil"></i> {{ app.status }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ app.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>{{ app.created_at.strftime("%Y-%m-%d %H:%M") }}</small>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{{ url_for('view_application', app_id=app.id) }}" 
+                                   class="btn btn-outline-primary" 
+                                   title="Secure View (RBAC + XSS Protection)">
+                                    <i class="bi bi-shield-check"></i> View
+                                </a>
+                                <a href="{{ url_for('vulnerable_view_application', app_id=app.id) }}" 
+                                   class="btn btn-outline-danger" 
+                                   title="Vulnerable View (IDOR + XSS)">
+                                    <i class="bi bi-bug"></i> Vuln
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <!-- No Results -->
+        <div class="text-center py-5">
+            <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+            <h5 class="text-muted mt-3">No applications found</h5>
+            <p class="text-muted">
+                {% if search_query %}
+                    No results for "{{ search_query }}". Try a different search term.
+                {% else %}
+                    Get started by creating your first loan application.
+                {% endif %}
+            </p>
+            <a href="{{ url_for('new_application') }}" class="btn btn-primary mt-2">
+                <i class="bi bi-plus-circle"></i> Create New Application
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Security Explanation -->
+<div class="card mt-4 border-success">
+    <div class="card-header bg-success text-white">
+        <h6 class="mb-0">
+            <i class="bi bi-shield-check"></i> Security Features in This View
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <h6><i class="bi bi-1-circle text-success"></i> Role-Based Access Control (RBAC)</h6>
+                <p class="small text-muted">
+                    Branch officers see only their branch's applications. HO officers see all branches.
+                    Prevents horizontal privilege escalation.
+                </p>
+            </div>
+            <div class="col-md-6">
+                <h6><i class="bi bi-2-circle text-success"></i> SQL Injection Prevention</h6>
+                <p class="small text-muted">
+                    Search uses SQLAlchemy ORM with parameterized queries. User input is never concatenated into SQL.
+                </p>
+            </div>
+            <div class="col-md-6">
+                <h6><i class="bi bi-3-circle text-success"></i> Output Encoding</h6>
+                <p class="small text-muted">
+                    All user-generated content (names, remarks) is auto-escaped by Jinja2, preventing XSS attacks.
+                </p>
+            </div>
+            <div class="col-md-6">
+                <h6><i class="bi bi-4-circle text-success"></i> Audit Trail</h6>
+                <p class="small text-muted">
+                    Every application tracks who created it and when (created_by, created_at fields). 
+                    Essential for compliance and forensics.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

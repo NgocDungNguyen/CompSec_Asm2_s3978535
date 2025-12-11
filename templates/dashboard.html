@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - RMIT NeoBank{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-speedometer2"></i> Dashboard
+    </h2>
+    <div>
+        <span class="badge bg-primary">{{ current_user.role | replace('_', ' ') | title }}</span>
+        <span class="badge bg-secondary">{{ current_user.branch_code }}</span>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row g-4 mb-4">
+    <!-- Total Applications -->
+    <div class="col-md-4 col-lg-2">
+        <div class="card stat-card border-start border-primary border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Total</h6>
+                        <h2 class="mb-0">{{ apps_count }}</h2>
+                    </div>
+                    <div class="stat-icon bg-primary">
+                        <i class="bi bi-file-earmark-text"></i>
+                    </div>
+                </div>
+                <small class="text-muted">
+                    {% if current_user.role == 'branch_officer' %}
+                    Your branch
+                    {% else %}
+                    All branches
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Draft Applications -->
+    <div class="col-md-4 col-lg-2">
+        <div class="card stat-card border-start border-secondary border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Draft</h6>
+                        <h2 class="mb-0">{{ draft_count }}</h2>
+                    </div>
+                    <div class="stat-icon bg-secondary">
+                        <i class="bi bi-pencil-square"></i>
+                    </div>
+                </div>
+                <small class="text-muted">Not submitted</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Pending Expert Review -->
+    <div class="col-md-4 col-lg-2">
+        <div class="card stat-card border-start border-warning border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Expert Review</h6>
+                        <h2 class="mb-0">{{ pending_expert_count }}</h2>
+                    </div>
+                    <div class="stat-icon bg-warning">
+                        <i class="bi bi-hourglass-split"></i>
+                    </div>
+                </div>
+                <small class="text-muted">With experts</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Pending HO Approval -->
+    <div class="col-md-4 col-lg-2">
+        <div class="card stat-card border-start border-info border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">HO Review</h6>
+                        <h2 class="mb-0">{{ pending_ho_count }}</h2>
+                    </div>
+                    <div class="stat-icon bg-info">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+                </div>
+                <small class="text-muted">Awaiting HO</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Approved Applications -->
+    <div class="col-md-4 col-lg-2">
+        <div class="card stat-card border-start border-success border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Approved</h6>
+                        <h2 class="mb-0">{{ approved_count }}</h2>
+                    </div>
+                    <div class="stat-icon bg-success">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                </div>
+                <small class="text-muted">Final approved</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Rejected/Returned Applications -->
+    <div class="col-md-4 col-lg-2">
+        <div class="card stat-card border-start border-danger border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Rejected</h6>
+                        <h2 class="mb-0">{{ rejected_count }}</h2>
+                    </div>
+                    <div class="stat-icon bg-danger">
+                        <i class="bi bi-x-circle"></i>
+                    </div>
+                </div>
+                <small class="text-muted">Not approved</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Returned Applications (if any) -->
+{% if returned_count > 0 %}
+<div class="alert alert-warning mb-4" role="alert">
+    <i class="bi bi-arrow-return-left"></i> <strong>{{ returned_count }}</strong> application(s) returned for corrections/reassessment
+</div>
+{% endif %}
+
+<!-- HO Officer Additional Stats -->
+{% if current_user.role in ['branch_ho', 'super_admin'] %}
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card stat-card border-start border-info border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Pending Credit Checks</h6>
+                        <h2 class="mb-0">{{ pending_credit_checks }}</h2>
+                    </div>
+                    <div class="stat-icon bg-info">
+                        <i class="bi bi-hourglass-split"></i>
+                    </div>
+                </div>
+                <small class="text-muted">Awaiting bureau response</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card stat-card border-start border-success border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Credit Checks Today</h6>
+                        <h2 class="mb-0">{{ completed_checks_today }}</h2>
+                    </div>
+                    <div class="stat-icon bg-success">
+                        <i class="bi bi-graph-up"></i>
+                    </div>
+                </div>
+                <small class="text-muted">Bureau queries completed</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Quick Actions -->
+<div class="row g-4">
+    <!-- Applications Management -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-file-earmark-text"></i> Applications Management
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Manage loan applications, create new leads, and track application lifecycle.</p>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('list_applications') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-list-ul"></i> View All Applications
+                    </a>
+                    <a href="{{ url_for('new_application') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Create New Application
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Security Demonstrations -->
+    <div class="col-md-6">
+        <div class="card h-100 border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-shield-exclamation"></i> Security Demonstrations
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    <strong>⚠️ Educational Vulnerable Endpoints:</strong><br>
+                    Explore common web application vulnerabilities and their secure alternatives.
+                </p>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('vulnerable_search') }}" class="btn btn-outline-danger">
+                        <i class="bi bi-bug"></i> SQL Injection Demo
+                    </a>
+                    <a href="{{ url_for('vulnerable_bulk_import') }}" class="btn btn-outline-danger">
+                        <i class="bi bi-bug"></i> Command Injection Demo
+                    </a>
+                    <small class="text-muted mt-2">
+                        <i class="bi bi-info-circle"></i> For IDOR & XSS demos, use "Vulnerable View" button on any application detail page.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- HO Officer Operations -->
+{% if current_user.role in ['branch_ho', 'super_admin'] %}
+<div class="row g-4 mt-2">
+    <div class="col-md-12">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-shield-check"></i> Secure Operations (Head Office)
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    <strong>✅ Secure Implementation Examples:</strong><br>
+                    Demonstrates security best practices: file upload security, input validation, RBAC.
+                </p>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <a href="{{ url_for('secure_bulk_import') }}" class="btn btn-outline-success w-100">
+                            <i class="bi bi-upload"></i> Secure Bulk Import (CSV Upload)
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{{ url_for('list_applications') }}" class="btn btn-outline-success w-100">
+                            <i class="bi bi-shield-lock"></i> View All Applications (RBAC Protected)
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Welcome Message for First-Time Users -->
+{% if apps_count == 0 %}
+<div class="alert alert-info mt-4" role="alert">
+    <h5 class="alert-heading">
+        <i class="bi bi-info-circle"></i> Welcome to NeoBank CAS Gateway!
+    </h5>
+    <p>
+        No applications found. Get started by creating your first loan application or exploring the security demonstrations.
+    </p>
+    <hr>
+    <p class="mb-0">
+        <strong>Next steps:</strong>
+    </p>
+    <ul>
+        <li>Create a new loan application using the button above</li>
+        <li>Explore the vulnerable endpoints to understand security risks</li>
+        <li>Compare vulnerable implementations with secure alternatives</li>
+    </ul>
+</div>
+{% endif %}
+
+<style>
+.stat-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    color: white;
+    opacity: 0.9;
+}
+</style>
+{% endblock %}

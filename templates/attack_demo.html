@@ -1,0 +1,467 @@
+{% extends "base.html" %}
+
+{% block title %}{{ attack_type }} - RMIT NeoBank{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+        <li class="breadcrumb-item active">{{ attack_type }} Demo</li>
+    </ol>
+</nav>
+
+<!-- Vulnerability Alert -->
+<div class="alert alert-danger shadow-lg" role="alert">
+    <h4 class="alert-heading">
+        <i class="bi bi-exclamation-triangle-fill"></i> ⚠️ SQL INJECTION VULNERABILITY
+    </h4>
+    <p><strong>This is a DELIBERATELY INSECURE implementation for educational purposes.</strong></p>
+    <hr>
+    <h6>Vulnerability: CWE-89 (SQL Injection)</h6>
+    <p class="mb-2"><strong>What's Wrong:</strong></p>
+    <ul>
+        <li>User input is directly concatenated into SQL query (string interpolation)</li>
+        <li>No parameterization or input sanitization</li>
+        <li>No branch-based filtering (access control bypass)</li>
+        <li>Attacker can inject SQL syntax to manipulate the query</li>
+    </ul>
+    <p class="mb-2"><strong>Attack Examples:</strong></p>
+    <pre class="bg-dark text-light p-2 rounded">' OR 1=1 --                    # Bypass WHERE clause, return all records
+' UNION SELECT NULL, username, password_hash, NULL, NULL FROM users --   # Extract user credentials
+'; DROP TABLE loan_applications--   # Destructive (DO NOT ACTUALLY RUN)</pre>
+    <p class="mb-0">
+        <a href="{{ url_for('list_applications') }}" class="btn btn-success btn-sm">
+            <i class="bi bi-shield-check"></i> View Secure Search Implementation
+        </a>
+    </p>
+</div>
+
+<!-- Search Form -->
+<div class="card border-danger">
+    <div class="card-header bg-danger text-white">
+        <h4 class="mb-0">
+            <i class="bi bi-bug-fill"></i> Vulnerable SQL Search (Injection Demo)
+        </h4>
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-8">
+                <label for="searchQuery" class="form-label">
+                    <i class="bi bi-search"></i> Search Query (Unsafe - Concatenated into SQL)
+                </label>
+                <input type="text" class="form-control form-control-lg" id="searchQuery" name="q" 
+                       value="{{ search_query }}" placeholder="Try: ' OR 1=1 --">
+            </div>
+            <div class="col-md-4 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-danger btn-lg flex-grow-1">
+                    <i class="bi bi-search"></i> Search (Vulnerable)
+                </button>
+                <a href="{{ url_for('vulnerable_search') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Clear
+                </a>
+            </div>
+        </form>
+        
+        <!-- Attack Payloads Examples -->
+        <div class="mt-4">
+            <h6>🔥 Try These SQL Injection Payloads:</h6>
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body py-2">
+                            <strong>Bypass WHERE clause:</strong><br>
+                            <code class="text-danger">' OR 1=1 --</code><br>
+                            <small class="text-muted">Returns ALL records (access control bypass)</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body py-2">
+                            <strong>Always true condition:</strong><br>
+                            <code class="text-danger">' OR 'a'='a</code><br>
+                            <small class="text-muted">Alternative to bypass WHERE</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <div class="card bg-light">
+                        <div class="card-body py-2">
+                            <strong>UNION-based injection (extract other tables):</strong><br>
+                            <code class="text-danger">' UNION SELECT id, username, password_hash, full_name, branch_code, role, created_at, NULL, NULL FROM users --</code><br>
+                            <small class="text-muted">Attempts to extract user credentials (may need column count adjustment)</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <div class="card bg-light">
+                        <div class="card-body py-2">
+                            <strong>Comment out rest of query:</strong><br>
+                            <code class="text-danger">test' --</code> or <code class="text-danger">test' #</code><br>
+                            <small class="text-muted">Comments out everything after injection point</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Raw SQL Display -->
+{% if raw_sql %}
+<div class="card mt-4 border-warning">
+    <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0">
+            <i class="bi bi-terminal"></i> Raw SQL Query Executed
+        </h5>
+    </div>
+    <div class="card-body">
+        <pre class="bg-dark text-warning p-3 rounded mb-0" style="max-height: 300px; overflow-y: auto;"><code>{{ raw_sql }}</code></pre>
+        <small class="text-muted mt-2 d-block">
+            <i class="bi bi-exclamation-circle"></i> 
+            Notice how your input is directly embedded in the SQL string. SQL syntax characters like 
+            <code>'</code> <code>--</code> <code>UNION</code> are interpreted by the database.
+        </small>
+    </div>
+</div>
+{% endif %}
+
+<!-- Results Table -->
+<div class="card mt-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-table"></i> Query Results
+            <span class="badge bg-light text-dark ms-2">{{ rows | length }} rows</span>
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        {% if rows %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Ref</th>
+                        <th>Applicant</th>
+                        <th>National ID</th>
+                        <th>Product</th>
+                        <th>Amount</th>
+                        <th>Branch</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td>{{ row.id }}</td>
+                        <td><code class="text-primary">{{ row.application_ref }}</code></td>
+                        <td>{{ row.applicant_name }}</td>
+                        <td><code>{{ row.national_id }}</code></td>
+                        <td><span class="badge bg-secondary">{{ row.product_code }}</span></td>
+                        <td class="text-end">
+                            {% if row.requested_amount is number %}
+                                {{ "{:,.0f}".format(row.requested_amount) }}
+                            {% else %}
+                                {{ row.requested_amount }}
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-info">{{ row.branch_code }}</span></td>
+                        <td>
+                            {% if row.status == 'APPROVED' %}
+                                <span class="badge bg-success">{{ row.status }}</span>
+                            {% elif row.status == 'REJECTED' %}
+                                <span class="badge bg-danger">{{ row.status }}</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">{{ row.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td><small>{{ row.created_at[:10] if row.created_at else 'N/A' }}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Success Message for Injection -->
+        {% if rows | length > 0 and ("'" in search_query or "--" in search_query or "UNION" in search_query.upper()) %}
+        <div class="alert alert-danger m-3 mb-0" role="alert">
+            <h6 class="alert-heading">
+                <i class="bi bi-check-circle"></i> SQL Injection Successful!
+            </h6>
+            <p class="mb-0">
+                Your injected SQL was executed. Notice how you can see applications from 
+                <strong>multiple branches</strong>, bypassing the intended access control. 
+                In a real attack, this could expose sensitive customer data across the entire bank.
+            </p>
+        </div>
+        {% endif %}
+        {% else %}
+        <!-- No Results -->
+        <div class="text-center py-5">
+            <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+            <h5 class="text-muted mt-3">No results found</h5>
+            <p class="text-muted">
+                {% if search_query %}
+                    No records match your query. Try a different injection payload or valid search term.
+                {% else %}
+                    Enter a search term above.
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Real-World Attack Scenarios -->
+<div class="card mt-4 border-danger">
+    <div class="card-header bg-danger text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-exclamation-octagon-fill"></i> Real-World SQL Injection Attack Scenarios
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="accordion" id="attackScenarios">
+            <!-- Scenario 1: Data Breach -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#scenario1">
+                        <i class="bi bi-shield-exclamation text-danger me-2"></i>
+                        <strong>Attack #1: Massive Data Breach - Extract ALL Customer Records</strong>
+                    </button>
+                </h2>
+                <div id="scenario1" class="accordion-collapse collapse show" data-bs-parent="#attackScenarios">
+                    <div class="accordion-body">
+                        <p><strong>Attack Payload:</strong></p>
+                        <pre class="bg-dark text-light p-3 rounded"><code>' OR 1=1 --</code></pre>
+                        <p><strong>Real-World Context:</strong> Heartland Payment Systems (2008)</p>
+                        <ul>
+                            <li>SQL injection compromised 130 million credit card numbers</li>
+                            <li>Cost: $140 million in settlements and remediation</li>
+                            <li>Criminal prosecution: Albert Gonzalez sentenced to 20 years in prison</li>
+                        </ul>
+                        <p><strong>In This Application:</strong></p>
+                        <p>Returns ALL loan applications from ALL branches (HCM01, HN01, DN01). Branch officers should ONLY see their own branch data. This bypasses:</p>
+                        <ul>
+                            <li>Role-Based Access Control (RBAC)</li>
+                            <li>Branch-level data isolation</li>
+                            <li>Privacy regulations (GDPR Article 32)</li>
+                        </ul>
+                        <a href="{{ url_for('vulnerable_search', q="' OR 1=1 --") }}" class="btn btn-sm btn-danger">
+                            <i class="bi bi-play-fill"></i> Execute Attack
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scenario 2: Cross-Branch Espionage -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#scenario2">
+                        <i class="bi bi-building text-warning me-2"></i>
+                        <strong>Attack #2: Corporate Espionage - Steal Competitor Branch Data</strong>
+                    </button>
+                </h2>
+                <div id="scenario2" class="accordion-collapse collapse" data-bs-parent="#attackScenarios">
+                    <div class="accordion-body">
+                        <p><strong>Attack Payload:</strong></p>
+                        <pre class="bg-dark text-light p-3 rounded"><code>' OR branch_code != '{{ current_user.branch_code }}' --</code></pre>
+                        <p><strong>Impact:</strong></p>
+                        <ul>
+                            <li>HCM branch officer sees Hanoi and Da Nang branch customers</li>
+                            <li>Competitive intelligence: loan volumes, customer demographics, approval rates</li>
+                            <li>PII exposure: names, national IDs, phone numbers, loan amounts</li>
+                        </ul>
+                        <p><strong>Banking Compliance Violation:</strong></p>
+                        <ul>
+                            <li>Basel III Principle 14: Information Security</li>
+                            <li>PCI DSS Requirement 7: Restrict access by business need-to-know</li>
+                            <li>Potential regulatory fines + license suspension</li>
+                        </ul>
+                        <a href="{{ url_for('vulnerable_search', q="' OR branch_code != '" ~ current_user.branch_code ~ "' --") }}" class="btn btn-sm btn-warning">
+                            <i class="bi bi-play-fill"></i> Execute Attack
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scenario 3: High-Value Target -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#scenario3">
+                        <i class="bi bi-cash-stack text-success me-2"></i>
+                        <strong>Attack #3: Identity Theft - Target High-Net-Worth Individuals</strong>
+                    </button>
+                </h2>
+                <div id="scenario3" class="accordion-collapse collapse" data-bs-parent="#attackScenarios">
+                    <div class="accordion-body">
+                        <p><strong>Attack Payload:</strong></p>
+                        <pre class="bg-dark text-light p-3 rounded"><code>' OR requested_amount > 1000000000 --</code></pre>
+                        <p><strong>What This Reveals:</strong></p>
+                        <ul>
+                            <li>Customers requesting loans over 1 billion VND (~$40,000 USD)</li>
+                            <li>Likely high-net-worth individuals or business owners</li>
+                            <li>Full PII: name, national ID, phone, email</li>
+                        </ul>
+                        <p><strong>Criminal Use Cases:</strong></p>
+                        <ol>
+                            <li><strong>Spear Phishing:</strong> Target wealthy customers with fake bank communications</li>
+                            <li><strong>CEO Fraud:</strong> Impersonate bank to request wire transfers</li>
+                            <li><strong>Identity Theft:</strong> Use PII to open fraudulent accounts</li>
+                            <li><strong>Kidnapping/Extortion:</strong> Physical harm to wealthy individuals (extreme)</li>
+                        </ol>
+                        <a href="{{ url_for('vulnerable_search', q="' OR requested_amount > 1000000000 --") }}" class="btn btn-sm btn-success">
+                            <i class="bi bi-play-fill"></i> Execute Attack
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scenario 4: Credential Theft -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#scenario4">
+                        <i class="bi bi-person-fill-lock text-info me-2"></i>
+                        <strong>Attack #4: Privilege Escalation - Extract Admin Credentials (UNION Injection)</strong>
+                    </button>
+                </h2>
+                <div id="scenario4" class="accordion-collapse collapse" data-bs-parent="#attackScenarios">
+                    <div class="accordion-body">
+                        <p><strong>Attack Payload:</strong></p>
+                        <pre class="bg-dark text-light p-3 rounded small"><code>' UNION SELECT id, username, password_hash, full_name, branch_code, role, NULL, NULL, NULL FROM users --</code></pre>
+                        <p><strong>Technical Explanation:</strong></p>
+                        <ol>
+                            <li>UNION combines loan_applications table with users table</li>
+                            <li>Column count must match (9 columns)</li>
+                            <li>Returns usernames and password hashes</li>
+                            <li>Attacker uses rainbow tables or GPU cracking to recover passwords</li>
+                        </ol>
+                        <p><strong>Real-World Impact:</strong> Sony Pictures (2011)</p>
+                        <ul>
+                            <li>SQL injection exposed 1 million user accounts</li>
+                            <li>Passwords stored in plaintext (additional failure)</li>
+                            <li>77 million PlayStation Network accounts compromised</li>
+                        </ul>
+                        <p class="text-muted"><em>Note: May show SQL error if column types mismatch, but demonstrates attack vector.</em></p>
+                        <a href="{{ url_for('vulnerable_search', q="' UNION SELECT id, username, password_hash, full_name, branch_code, role, NULL, NULL, NULL FROM users --") }}" class="btn btn-sm btn-info">
+                            <i class="bi bi-play-fill"></i> Execute Attack
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Technical Explanation -->
+<div class="card mt-4 border-info">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-book"></i> Technical Deep Dive: How SQL Injection Works
+        </h5>
+    </div>
+    <div class="card-body">
+        <h6>🚨 The Vulnerable Code:</h6>
+        <pre class="bg-light p-3 border rounded">search_query = request.args.get("q", "")
+
+# 🚨 VULNERABLE: Direct string concatenation
+raw_sql = f"""
+    SELECT * FROM loan_applications
+    WHERE applicant_name LIKE '%{search_query}%'
+    ORDER BY created_at DESC
+"""
+
+result = db.session.execute(text(raw_sql))</pre>
+        
+        <p class="mt-3"><strong>The Problem:</strong></p>
+        <ol>
+            <li>User input (<code>search_query</code>) is directly embedded in SQL string using f-string formatting</li>
+            <li>No validation that input contains only safe characters</li>
+            <li>SQL metacharacters (<code>'</code> <code>--</code> <code>;</code> <code>UNION</code>) are interpreted as SQL syntax</li>
+            <li>Attacker can close the original WHERE clause and inject arbitrary SQL</li>
+        </ol>
+        
+        <p class="mt-3"><strong>How the Attack Works:</strong></p>
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Intended Query:</h6>
+                <pre class="bg-light p-2 border rounded small">SELECT * FROM loan_applications
+WHERE applicant_name LIKE '%John%'</pre>
+            </div>
+            <div class="col-md-6">
+                <h6>Injected Query (input: <code>' OR 1=1 --</code>):</h6>
+                <pre class="bg-light p-2 border rounded small text-danger">SELECT * FROM loan_applications
+WHERE applicant_name LIKE '%' OR 1=1 --%'
+<span class="text-muted">-- Everything after -- is commented out</span></pre>
+            </div>
+        </div>
+        
+        <p class="mt-3"><strong>Real-World Impact:</strong></p>
+        <ul>
+            <li><strong>Data Breach:</strong> Access all customer PII, financial data (violates GDPR, PCI DSS)</li>
+            <li><strong>Authentication Bypass:</strong> Login without valid credentials</li>
+            <li><strong>Privilege Escalation:</strong> Modify user roles (branch → admin)</li>
+            <li><strong>Data Manipulation:</strong> UPDATE queries to modify loan amounts, statuses</li>
+            <li><strong>Data Destruction:</strong> DROP TABLE or DELETE statements</li>
+        </ul>
+        
+        <p><strong>Historic Examples:</strong></p>
+        <ul class="mb-0">
+            <li><strong>Heartland Payment Systems (2008):</strong> SQL injection → 130M credit cards stolen</li>
+            <li><strong>TalkTalk (2015):</strong> SQL injection → 157K customer records exposed, £400K fine</li>
+            <li><strong>Sony Pictures (2011):</strong> SQL injection → 1M user accounts compromised</li>
+        </ul>
+    </div>
+</div>
+
+<!-- Secure Alternative -->
+<div class="card mt-4 border-success">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-shield-check"></i> Secure Alternative (Parameterized Queries)
+        </h5>
+    </div>
+    <div class="card-body">
+        <h6>How to Fix This Vulnerability:</h6>
+        <p>Use parameterized queries (prepared statements) via SQLAlchemy ORM:</p>
+        <pre class="bg-light p-3 border rounded">search_query = request.args.get("q", "").strip()
+
+# ✅ SECURE: ORM automatically parameterizes
+query = LoanApplication.query
+
+if search_query:
+    # SQLAlchemy uses bind parameters internally
+    query = query.filter(LoanApplication.applicant_name.ilike(f"%{search_query}%"))
+
+applications = query.all()</pre>
+        
+        <p class="mt-3"><strong>Why This Is Secure:</strong></p>
+        <ol>
+            <li><strong>Parameterization:</strong> SQLAlchemy uses <code>?</code> placeholders, sends data separately from SQL</li>
+            <li><strong>Type Safety:</strong> Database treats user input as DATA, not SQL code</li>
+            <li><strong>Escaping:</strong> Special characters automatically escaped by database driver</li>
+            <li><strong>No String Concatenation:</strong> User input never merged into SQL string</li>
+        </ol>
+        
+        <p class="mt-3"><strong>Additional Security Layers:</strong></p>
+        <ul class="mb-0">
+            <li><strong>RBAC:</strong> Branch-based filtering enforced (see secure /applications endpoint)</li>
+            <li><strong>Input Validation:</strong> Length limits, character whitelisting</li>
+            <li><strong>Output Encoding:</strong> XSS prevention when displaying results</li>
+            <li><strong>Audit Logging:</strong> Log all search queries for anomaly detection</li>
+        </ul>
+    </div>
+</div>
+
+<!-- Back Button -->
+<div class="mt-4">
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+    <a href="{{ url_for('list_applications') }}" class="btn btn-success">
+        <i class="bi bi-shield-check"></i> Try Secure Search
+    </a>
+</div>
+
+{% endblock %}

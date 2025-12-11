@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Test Accounts - RMIT NeoBank{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="bi bi-people-fill"></i> Test User Accounts</h2>
+            <p class="text-muted">Click any "Quick Login" button to test that account. All accounts use password: <code>Password123</code></p>
+        </div>
+    </div>
+
+    <!-- Super Admin -->
+    <div class="card mb-4 border-danger">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="bi bi-shield-fill-exclamation"></i> SUPER ADMIN (Global Access)</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Password</th>
+                        <th>Branch</th>
+                        <th>Access</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>superadmin</strong></td>
+                        <td><code>Password123</code></td>
+                        <td><span class="badge bg-dark">HEAD_OFFICE</span></td>
+                        <td><span class="badge bg-danger">ALL BRANCHES</span></td>
+                        <td>
+                            <form method="POST" action="{{ url_for('login') }}" style="display:inline;">
+                                <input type="hidden" name="username" value="superadmin">
+                                <input type="hidden" name="password" value="Password123">
+                                <button type="submit" class="btn btn-sm btn-danger">
+                                    <i class="bi bi-box-arrow-in-right"></i> Quick Login
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Branch Officers -->
+    <div class="card mb-4 border-primary">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-person-badge"></i> BRANCH OFFICERS (Create Applications)</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for branch_code in ['HCM01', 'HCM02', 'HN01', 'HN02', 'HN03', 'DN01', 'DN02', 'CT01', 'HP01'] %}
+                <div class="col-md-6 mb-3">
+                    <h6 class="text-primary">{{ branch_code }}</h6>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                            <tr>
+                                <td><strong>bo_{{ branch_code.lower() }}_1</strong></td>
+                                <td><code>Password123</code></td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('login') }}" style="display:inline;">
+                                        <input type="hidden" name="username" value="bo_{{ branch_code.lower() }}_1">
+                                        <input type="hidden" name="password" value="Password123">
+                                        <button type="submit" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-box-arrow-in-right"></i> Login
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>bo_{{ branch_code.lower() }}_2</strong></td>
+                                <td><code>Password123</code></td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('login') }}" style="display:inline;">
+                                        <input type="hidden" name="username" value="bo_{{ branch_code.lower() }}_2">
+                                        <input type="hidden" name="password" value="Password123">
+                                        <button type="submit" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-box-arrow-in-right"></i> Login
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Approval Experts -->
+    <div class="card mb-4 border-warning">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0"><i class="bi bi-award"></i> APPROVAL EXPERTS (Grade & Review)</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for branch_code in ['HCM01', 'HCM02', 'HN01', 'HN02', 'HN03', 'DN01', 'DN02', 'CT01', 'HP01'] %}
+                <div class="col-md-6 mb-3">
+                    <h6 class="text-warning">{{ branch_code }}</h6>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                            <tr>
+                                <td><strong>expert_{{ branch_code.lower() }}_1</strong></td>
+                                <td><code>Password123</code></td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('login') }}" style="display:inline;">
+                                        <input type="hidden" name="username" value="expert_{{ branch_code.lower() }}_1">
+                                        <input type="hidden" name="password" value="Password123">
+                                        <button type="submit" class="btn btn-sm btn-warning">
+                                            <i class="bi bi-box-arrow-in-right"></i> Login
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>expert_{{ branch_code.lower() }}_2</strong></td>
+                                <td><code>Password123</code></td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('login') }}" style="display:inline;">
+                                        <input type="hidden" name="username" value="expert_{{ branch_code.lower() }}_2">
+                                        <input type="hidden" name="password" value="Password123">
+                                        <button type="submit" class="btn btn-sm btn-warning">
+                                            <i class="bi bi-box-arrow-in-right"></i> Login
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Branch HO -->
+    <div class="card mb-4 border-success">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="bi bi-shield-check"></i> BRANCH HO (Final Approver)</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for branch_code in ['HCM01', 'HCM02', 'HN01', 'HN02', 'HN03', 'DN01', 'DN02', 'CT01', 'HP01'] %}
+                <div class="col-md-6 mb-3">
+                    <h6 class="text-success">{{ branch_code }}</h6>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                            <tr>
+                                <td><strong>ho_{{ branch_code.lower() }}_1</strong></td>
+                                <td><code>Password123</code></td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('login') }}" style="display:inline;">
+                                        <input type="hidden" name="username" value="ho_{{ branch_code.lower() }}_1">
+                                        <input type="hidden" name="password" value="Password123">
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="bi bi-box-arrow-in-right"></i> Login
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% if branch_code not in ['CT01', 'HP01'] %}
+                            <tr>
+                                <td><strong>ho_{{ branch_code.lower() }}_2</strong></td>
+                                <td><code>Password123</code></td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('login') }}" style="display:inline;">
+                                        <input type="hidden" name="username" value="ho_{{ branch_code.lower() }}_2">
+                                        <input type="hidden" name="password" value="Password123">
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="bi bi-box-arrow-in-right"></i> Login
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="alert alert-info">
+        <h5><i class="bi bi-info-circle"></i> Summary</h5>
+        <ul class="mb-0">
+            <li><strong>Total Users: 62</strong></li>
+            <li>1 SUPER_ADMIN (global access)</li>
+            <li>18 Branch Officers (2 per branch)</li>
+            <li>27 Approval Experts (3 per branch)</li>
+            <li>16 Branch HO (1-2 per branch)</li>
+            <li><strong>All passwords:</strong> <code>Password123</code></li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

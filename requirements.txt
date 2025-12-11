@@ -1,0 +1,7 @@
+# RMIT NeoBank Loan Origination & Credit Bureau Gateway
+
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.5
+email-validator==2.2.0
+Werkzeug==3.0.1

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Error {{ error_code }} - RMIT NeoBank{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center align-items-center" style="min-height: 60vh;">
+        <div class="col-md-6 text-center">
+            <!-- Error Icon -->
+            <div class="mb-4">
+                {% if error_code == 404 %}
+                    <i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 6rem;"></i>
+                {% elif error_code == 403 %}
+                    <i class="bi bi-shield-lock-fill text-danger" style="font-size: 6rem;"></i>
+                {% elif error_code == 500 %}
+                    <i class="bi bi-x-octagon-fill text-danger" style="font-size: 6rem;"></i>
+                {% else %}
+                    <i class="bi bi-exclamation-circle-fill text-secondary" style="font-size: 6rem;"></i>
+                {% endif %}
+            </div>
+
+            <!-- Error Code -->
+            <h1 class="display-1 fw-bold mb-3">{{ error_code }}</h1>
+
+            <!-- Error Message -->
+            <h3 class="mb-4">
+                {% if error_code == 404 %}
+                    Page Not Found
+                {% elif error_code == 403 %}
+                    Access Forbidden
+                {% elif error_code == 500 %}
+                    Internal Server Error
+                {% else %}
+                    Error
+                {% endif %}
+            </h3>
+
+            <p class="lead mb-4 text-muted">
+                {% if error_code == 404 %}
+                    The page you're looking for doesn't exist or has been moved.
+                {% elif error_code == 403 %}
+                    You don't have permission to access this resource.
+                {% elif error_code == 500 %}
+                    Something went wrong on our end. We're working to fix it.
+                {% else %}
+                    {{ error_message }}
+                {% endif %}
+            </p>
+
+            <!-- Action Buttons -->
+            <div class="d-flex gap-3 justify-content-center">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg">
+                    <i class="bi bi-house-door"></i> Go to Dashboard
+                </a>
+                <button onclick="window.history.back()" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-arrow-left"></i> Go Back
+                </button>
+            </div>
+
+            <!-- Additional Help Text -->
+            {% if error_code == 404 %}
+            <div class="mt-5">
+                <p class="text-muted small">
+                    <strong>Common reasons:</strong><br>
+                    • You may have typed the URL incorrectly<br>
+                    • The page may have been moved or deleted<br>
+                    • You may not have access to this resource
+                </p>
+            </div>
+            {% elif error_code == 403 %}
+            <div class="mt-5">
+                <p class="text-muted small">
+                    <strong>Why am I seeing this?</strong><br>
+                    • You may not have the required role to access this page<br>
+                    • This resource belongs to a different branch<br>
+                    • Your session may have expired - try logging in again
+                </p>
+            </div>
+            {% elif error_code == 500 %}
+            <div class="mt-5">
+                <p class="text-muted small">
+                    <strong>What can I do?</strong><br>
+                    • Try refreshing the page<br>
+                    • Go back and try again<br>
+                    • Contact your system administrator if the problem persists
+                </p>
+            </div>
+            {% endif %}
+
+            <!-- Educational Note for Demo -->
+            <div class="alert alert-info mt-5 text-start">
+                <i class="bi bi-info-circle"></i> <strong>Demo Note:</strong>
+                This is an educational cybersecurity project. Error pages like this help users understand
+                what went wrong without revealing sensitive system information (which could aid attackers).
+                Always show generic error messages to external users while logging detailed errors internally.
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Error page specific styles */
+    .display-1 {
+        font-weight: 700;
+        color: var(--bs-secondary);
+    }
+</style>
+{% endblock %}
