@@ -133,42 +133,21 @@
             </div>
         </div>
         
-        <!-- Remarks Section (XSS Demo) -->
+        <!-- Remarks Section -->
         <div class="col-12">
-            <div class="card border-warning">
-                <div class="card-header bg-warning text-dark">
+            <div class="card">
+                <div class="card-header text-dark">
                     <h5 class="mb-0">
                         <i class="bi bi-chat-left-text"></i> Remarks / Notes
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-12">
-                            <label for="remarks" class="form-label">
-                                <i class="bi bi-sticky"></i> Additional Remarks (Optional)
-                            </label>
-                            <textarea class="form-control" id="remarks" name="remarks" rows="4" 
-                                      placeholder="Enter any additional notes, comments, or special instructions..."></textarea>
-                            
-                            <!-- XSS Demo Info -->
-                            <div class="alert alert-warning mt-3 mb-0" role="alert">
-                                <h6 class="alert-heading">
-                                    <i class="bi bi-exclamation-triangle"></i> XSS Demonstration Field
-                                </h6>
-                                <p class="small mb-2">
-                                    <strong>Educational Purpose:</strong> This field is used to demonstrate Stored XSS vulnerability.
-                                </p>
-                                <ul class="small mb-2">
-                                    <li><strong>Secure View:</strong> Remarks are auto-escaped by Jinja2 (XSS prevented)</li>
-                                    <li><strong>Vulnerable View:</strong> Remarks rendered with <code>|safe</code> filter (XSS executes)</li>
-                                </ul>
-                                <p class="small mb-0">
-                                    <strong>Try this payload:</strong> <code>&lt;script&gt;alert('XSS')&lt;/script&gt;</code><br>
-                                    Then view the application in "Vulnerable View" to see the script execute.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    <label for="remarks" class="form-label">
+                        <i class="bi bi-sticky"></i> Additional Remarks (Optional)
+                    </label>
+                    <textarea class="form-control" id="remarks" name="remarks" rows="4" 
+                              placeholder="Enter any additional notes, comments, or special instructions..."></textarea>
+                    <small class="text-muted">Optional field for any additional information or special considerations.</small>
                 </div>
             </div>
         </div>
@@ -211,34 +190,5 @@
         </div>
     </div>
 </form>
-
-<!-- Security Notice -->
-<div class="card mt-4 border-success">
-    <div class="card-header bg-success text-white">
-        <h6 class="mb-0">
-            <i class="bi bi-shield-check"></i> Security Controls in This Form
-        </h6>
-    </div>
-    <div class="card-body">
-        <div class="row g-2">
-            <div class="col-md-6">
-                <strong><i class="bi bi-check2 text-success"></i> Input Validation:</strong><br>
-                <small class="text-muted">All fields validated (type, format, range). Invalid inputs rejected.</small>
-            </div>
-            <div class="col-md-6">
-                <strong><i class="bi bi-check2 text-success"></i> Auto-Assignment:</strong><br>
-                <small class="text-muted">Branch code from session (prevents branch spoofing).</small>
-            </div>
-            <div class="col-md-6">
-                <strong><i class="bi bi-check2 text-success"></i> Audit Trail:</strong><br>
-                <small class="text-muted">created_by and created_at automatically recorded.</small>
-            </div>
-            <div class="col-md-6">
-                <strong><i class="bi bi-check2 text-success"></i> XSS Testing Field:</strong><br>
-                <small class="text-muted">Remarks field for demonstrating secure vs vulnerable rendering.</small>
-            </div>
-        </div>
-    </div>
-</div>
 
 {% endblock %}

@@ -130,6 +130,25 @@ def login_user(user: User):
     """
     # Flask's session is signed with SECRET_KEY, preventing tampering
     session.clear()  # Clear any previous session data
+
+    # ============================================================
+    # SECURE ENHANCEMENT (Uncomment to enable protection):
+    # ============================================================
+    # # Regenerate session ID to prevent session fixation
+    # # Flask 3.0+ provides session.regenerate() method
+    # try:
+    #     session.regenerate()  # New session ID issued
+    # except AttributeError:
+    #     # Fallback for older Flask versions
+    #     session.modified = True
+    #
+    # Defense Mechanism:
+    # - Prevents session fixation attacks (CWE-384)
+    # - Attacker cannot predict/set victim's session ID
+    # - Combined with HttpOnly, Secure, SameSite flags (app.py lines 87-89)
+    # - OWASP: Session Management best practice
+    # ============================================================
+
     session["user_id"] = user.id
     session["role"] = user.role
     session["branch_code"] = user.branch_code

@@ -12,45 +12,6 @@
     </ol>
 </nav>
 
-<!-- Security Mode Alert -->
-{% if vulnerable_view %}
-<div class="alert alert-danger shadow-sm" role="alert">
-    <h5 class="alert-heading">
-        <i class="bi bi-exclamation-triangle-fill"></i> ⚠️ VULNERABLE VIEW MODE
-    </h5>
-    <p><strong>Demonstrated Vulnerabilities:</strong></p>
-    <ul class="mb-0">
-        <li><strong>IDOR (Insecure Direct Object Reference):</strong> No branch-based access control. 
-            Any logged-in user can view this application by knowing/guessing its ID.</li>
-        <li><strong>Stored XSS:</strong> Remarks field rendered with <code>|safe</code> filter. 
-            Malicious JavaScript in remarks will execute in your browser.</li>
-    </ul>
-    <hr>
-    <p class="mb-0">
-        <a href="{{ url_for('view_application', app_id=application.id) }}" class="btn btn-success btn-sm">
-            <i class="bi bi-shield-check"></i> Switch to Secure View
-        </a>
-    </p>
-</div>
-{% else %}
-<div class="alert alert-success shadow-sm" role="alert">
-    <h5 class="alert-heading">
-        <i class="bi bi-shield-check-fill"></i> ✅ SECURE VIEW MODE
-    </h5>
-    <p><strong>Active Security Controls:</strong></p>
-    <ul class="mb-0">
-        <li><strong>RBAC Enforcement:</strong> Branch officers can only view their branch's applications. HO officers can view all.</li>
-        <li><strong>XSS Prevention:</strong> All user content (including remarks) is auto-escaped by Jinja2.</li>
-    </ul>
-    <hr>
-    <p class="mb-0">
-        <a href="{{ url_for('vulnerable_view_application', app_id=application.id) }}" class="btn btn-danger btn-sm">
-            <i class="bi bi-bug"></i> Switch to Vulnerable View (Demo)
-        </a>
-    </p>
-</div>
-{% endif %}
-
 <!-- Application Header -->
 <div class="card mb-4 border-primary">
     <div class="card-header bg-primary text-white">
@@ -161,47 +122,32 @@
     </div>
 </div>
 
-<!-- Remarks Section (XSS Demo Area) -->
+<!-- Remarks Section -->
 <div class="row g-4 mt-2">
     <div class="col-12">
-        <div class="card {% if vulnerable_view %}border-danger{% else %}border-success{% endif %}">
-            <div class="card-header {% if vulnerable_view %}bg-danger{% else %}bg-success{% endif %} text-white">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
                 <h5 class="mb-0">
                     <i class="bi bi-chat-left-text"></i> Remarks / Notes
-                    {% if vulnerable_view %}
-                        <span class="badge bg-light text-danger ms-2">VULNERABLE (XSS)</span>
-                    {% else %}
-                        <span class="badge bg-light text-success ms-2">SECURE (Escaped)</span>
-                    {% endif %}
                 </h5>
             </div>
             <div class="card-body">
                 {% if application.remarks %}
                     <div class="remarks-content p-3 border rounded bg-light">
-                        {% if vulnerable_view %}
-                            {# VULNERABLE: Renders HTML/JavaScript without escaping (XSS) #}
-                            {{ application.remarks | safe }}
-                        {% else %}
-                            {# SECURE: Auto-escaped by Jinja2 (XSS prevented) #}
-                            {{ application.remarks }}
-                        {% endif %}
-                    </div>
-                    
-                    <!-- Security Explanation -->
-                    <div class="alert {% if vulnerable_view %}alert-danger{% else %}alert-success{% endif %} mt-3 mb-0" role="alert">
-                        <small>
-                            {% if vulnerable_view %}
-                                <strong><i class="bi bi-bug"></i> VULNERABLE CODE:</strong> 
-                                <code>{{ "{{ application.remarks | safe }}" }}</code><br>
-                                The <code>|safe</code> filter disables Jinja2's auto-escaping. If remarks contain 
-                                <code>&lt;script&gt;</code> tags, they will execute in the browser (Stored XSS).
-                            {% else %}
-                                <strong><i class="bi bi-shield-check"></i> SECURE CODE:</strong> 
-                                <code>{{ "{{ application.remarks }}" }}</code><br>
-                                Jinja2 auto-escapes all HTML/JavaScript by default. Special characters like 
-                                <code>&lt;</code> <code>&gt;</code> are converted to HTML entities, preventing XSS.
-                            {% endif %}
-                        </small>
+                        {# VULNERABLE: Renders HTML/JavaScript without escaping (XSS) #}
+                        {{ application.remarks | safe }}
+
+                        {# ============================================================
+                           SECURE ALTERNATIVE (Replace above line to enable protection):
+                           ============================================================
+                           {{ application.remarks }}
+                           
+                           Defense Mechanism:
+                           - Jinja2 auto-escaping (default behavior)
+                           - Converts < to &lt;, > to &gt;, preventing script execution
+                           - OWASP: XSS Prevention (CWE-79)
+                           - Sanitizes user input before rendering in browser
+                           ============================================================ #}
                     </div>
                 {% else %}
                     <p class="text-muted mb-0"><em>No remarks entered.</em></p>
@@ -418,7 +364,7 @@
                 {% endif %}
                 
                 <!-- Trigger CIC Check Button (Expert/HO Only) -->
-                {% if current_user.role in ['approval_expert', 'branch_ho', 'super_admin'] and not vulnerable_view %}
+                {% if current_user.role in ['approval_expert', 'branch_ho', 'super_admin'] %}
                 {% if application.cic_check_status not in ['COMPLETED', 'NOT_FOUND'] %}
                 <div class="mt-3">
                     <form method="post" action="{{ url_for('perform_cic_credit_check', app_id=application.id) }}" 
@@ -450,10 +396,18 @@
 </div>
 
 <!-- 3-TIER WORKFLOW MANAGEMENT -->
-{% if not vulnerable_view %}
 <div class="row g-4 mt-2">
     <div class="col-12">
         
+        <!-- EDIT BUTTON: Expert, HO, Admin can edit application fields -->
+        {% if current_user.role in ['approval_expert', 'branch_ho', 'super_admin'] or (current_user.role == 'branch_officer' and application.status == 'DRAFT') %}
+        <div class="mb-3">
+            <a href="{{ url_for('edit_application', app_id=application.id) }}" class="btn btn-warning">
+                <i class="bi bi-pencil-square"></i> Edit Application
+            </a>
+        </div>
+        {% endif %}
+
         <!-- BRANCH OFFICER: Submit Application (DRAFT → PENDING_EXPERT_REVIEW) -->
         {% if current_user.role == 'branch_officer' and application.status == 'DRAFT' %}
         <div class="card border-primary">
@@ -594,7 +548,7 @@
         {% endif %}
 
         <!-- BRANCH HO: Final Decision (PENDING_HO_APPROVAL → APPROVED/REJECTED or RETURNED_TO_EXPERT/RETURNED_TO_BRANCH) -->
-        {% if current_user.role == 'branch_ho' and application.status == 'PENDING_HO_APPROVAL' %}
+        {% if (current_user.role == 'branch_ho' or current_user.role == 'super_admin') and application.status == 'PENDING_HO_APPROVAL' %}
         <div class="card border-danger">
             <div class="card-header bg-danger text-white">
                 <h5 class="mb-0">
@@ -721,7 +675,6 @@
 
     </div>
 </div>
-{% endif %}
 
 <!-- Back Button -->
 <div class="row mt-4">

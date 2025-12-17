@@ -50,36 +50,6 @@
                             <i class="bi bi-file-earmark-text"></i> Applications
                         </a>
                     </li>
-                    
-                    <!-- Security Demo Dropdown -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="securityDemoDropdown" role="button" 
-                           data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-shield-exclamation"></i> Security Demo
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="securityDemoDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('vulnerable_search') }}">
-                                <i class="bi bi-bug text-danger"></i> SQL Injection Demo
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('vulnerable_bulk_import') }}">
-                                <i class="bi bi-bug text-danger"></i> Command Injection Demo
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-muted small">
-                                <i class="bi bi-info-circle"></i> IDOR & XSS: Use "Vulnerable View" button on applications
-                            </a></li>
-                        </ul>
-                    </li>
-                    
-                    <!-- Secure Operations (HO Only) -->
-                    {% if current_user.role in [Role.HO_OFFICER, Role.ADMIN] %}
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'secure_bulk_import' %}active{% endif %}" 
-                           href="{{ url_for('secure_bulk_import') }}">
-                            <i class="bi bi-shield-check text-success"></i> Secure Bulk Import
-                        </a>
-                    </li>
-                    {% endif %}
                 </ul>
                 
                 <!-- User Info & Logout -->
@@ -142,15 +112,15 @@
                         <small>
                             <i class="bi bi-shield-lock"></i>
                             <strong>RMIT NeoBank Loan Origination System</strong><br>
-                            Educational Cybersecurity Project - Not for Production Use
+                            Credit Assessment System © 2025
                         </small>
                     </p>
                 </div>
                 <div class="col-md-6 text-md-end">
                     <p class="text-muted mb-0">
                         <small>
-                            Demonstrates: SQL Injection, XSS, Command Injection, IDOR, and Secure Alternatives<br>
-                            Built with Flask, SQLAlchemy, Bootstrap 5
+                            Integrated with Vietnam Credit Information Center (CIC)<br>
+                            Built with Flask & SQLAlchemy
                         </small>
                     </p>
                 </div>

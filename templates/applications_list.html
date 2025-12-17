@@ -17,7 +17,7 @@
 <div class="card mb-4">
     <div class="card-body">
         <form method="get" class="row g-3 align-items-center">
-            <div class="col-md-5">
+            <div class="col-md-8">
                 <label for="searchQuery" class="form-label">
                     <i class="bi bi-search"></i> Search Applications
                 </label>
@@ -27,27 +27,13 @@
             </div>
             <div class="col-md-4 d-flex align-items-end gap-2">
                 <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-search"></i> Search (Secure)
+                    <i class="bi bi-search"></i> Search
                 </button>
                 <a href="{{ url_for('list_applications') }}" class="btn btn-outline-secondary">
                     <i class="bi bi-x-circle"></i> Clear
                 </a>
             </div>
-            <div class="col-md-3 d-flex align-items-end">
-                <a href="{{ url_for('vulnerable_search') }}" class="btn btn-outline-danger w-100">
-                    <i class="bi bi-bug"></i> Vulnerable SQL Demo
-                </a>
-            </div>
         </form>
-        
-        <!-- Security Notice -->
-        <div class="alert alert-info mt-3 mb-0" role="alert">
-            <small>
-                <i class="bi bi-shield-check"></i>
-                <strong>Secure Search:</strong> This search uses parameterized queries via SQLAlchemy ORM, 
-                preventing SQL injection attacks. Compare with the vulnerable endpoint.
-            </small>
-        </div>
     </div>
 </div>
 
@@ -116,18 +102,10 @@
                             <small>{{ app.created_at.strftime("%Y-%m-%d %H:%M") }}</small>
                         </td>
                         <td>
-                            <div class="btn-group btn-group-sm" role="group">
-                                <a href="{{ url_for('view_application', app_id=app.id) }}" 
-                                   class="btn btn-outline-primary" 
-                                   title="Secure View (RBAC + XSS Protection)">
-                                    <i class="bi bi-shield-check"></i> View
-                                </a>
-                                <a href="{{ url_for('vulnerable_view_application', app_id=app.id) }}" 
-                                   class="btn btn-outline-danger" 
-                                   title="Vulnerable View (IDOR + XSS)">
-                                    <i class="bi bi-bug"></i> Vuln
-                                </a>
-                            </div>
+                            <a href="{{ url_for('view_application', app_id=app.id) }}" 
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-eye"></i> View
+                            </a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -151,45 +129,6 @@
             </a>
         </div>
         {% endif %}
-    </div>
-</div>
-
-<!-- Security Explanation -->
-<div class="card mt-4 border-success">
-    <div class="card-header bg-success text-white">
-        <h6 class="mb-0">
-            <i class="bi bi-shield-check"></i> Security Features in This View
-        </h6>
-    </div>
-    <div class="card-body">
-        <div class="row g-3">
-            <div class="col-md-6">
-                <h6><i class="bi bi-1-circle text-success"></i> Role-Based Access Control (RBAC)</h6>
-                <p class="small text-muted">
-                    Branch officers see only their branch's applications. HO officers see all branches.
-                    Prevents horizontal privilege escalation.
-                </p>
-            </div>
-            <div class="col-md-6">
-                <h6><i class="bi bi-2-circle text-success"></i> SQL Injection Prevention</h6>
-                <p class="small text-muted">
-                    Search uses SQLAlchemy ORM with parameterized queries. User input is never concatenated into SQL.
-                </p>
-            </div>
-            <div class="col-md-6">
-                <h6><i class="bi bi-3-circle text-success"></i> Output Encoding</h6>
-                <p class="small text-muted">
-                    All user-generated content (names, remarks) is auto-escaped by Jinja2, preventing XSS attacks.
-                </p>
-            </div>
-            <div class="col-md-6">
-                <h6><i class="bi bi-4-circle text-success"></i> Audit Trail</h6>
-                <p class="small text-muted">
-                    Every application tracks who created it and when (created_by, created_at fields). 
-                    Essential for compliance and forensics.
-                </p>
-            </div>
-        </div>
     </div>
 </div>
 
