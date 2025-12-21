@@ -282,34 +282,76 @@ data.csv && echo HACKED
 
 #### **Part B: Session Hijacking Demo**
 
+**⚠️ CRITICAL: Use the SAME domain in both windows (localhost OR 127.0.0.1, not mixed)**
+
 **Demonstration Using Browser DevTools:**
 
-1. **Capture Valid Session Cookie:**
+1. **Capture Valid Session Cookie (Victim Browser):**
 
-   - Login as `bo_hcm01_1`
-   - Open DevTools (F12) → Application tab → Cookies
-   - Find cookie named `session`
-   - Copy the entire cookie value (long base64 string)
+   - Go to `http://localhost:5000` (**Use localhost, not 127.0.0.1**)
+   - Login as `bo_hcm01_1` / `Password123`
+   - Open DevTools (F12) → **Application** tab → **Cookies** → `http://localhost:5000`
+   - Click on cookie named **`session`**
+   - In the **Value** field (right panel), **triple-click to select all**
+   - Copy (Ctrl+C) - should be 200+ characters
    - Example: `eyJicmFuY2hfY29kZSI6IkhDTTAxIiwiZnVs...`
+   - **Keep this window open** (closing it may expire the session)
+
 2. **Open Incognito Window (Simulate Attacker):**
 
-   - Open new Incognito/Private window
-   - Go to `http://127.0.0.1:5000`
-   - Open DevTools (F12) → Application → Cookies
+   - Press Ctrl+Shift+N (Chrome) or Ctrl+Shift+P (Firefox)
+   - Go to `http://localhost:5000` (**SAME DOMAIN as step 1**)
+   - You should see the login page
+   - Open DevTools (F12) → **Application** → **Cookies**
+
 3. **Inject Stolen Cookie:**
 
-   - Right-click on cookie area → Add new cookie:
-     - Name: `session`
-     - Value: (paste the stolen cookie value)
-     - Domain: `127.0.0.1`
-     - Path: `/`
-   - Refresh page
+   - In the Cookies panel, right-click → **Add new cookie** (or click **+** icon)
+   - Fill in:
+     - **Name**: `session`
+     - **Value**: (Ctrl+V paste the stolen cookie - all 200+ characters)
+     - **Domain**: `localhost` (**MUST MATCH step 1**)
+     - **Path**: `/`
+     - Leave other fields blank
+   - Click outside or press Enter to save
+   - **Refresh page** (F5)
+
 4. **Expected Result - WHAT YOU SEE:**
 
+   - ✅ Page redirects to dashboard (no login prompt)
+   - ✅ Shows "Welcome, Nguyen Van A (Branch Officer)"
    - ✅ Attacker is now logged in as `bo_hcm01_1`
-   - ✅ Can access all victim's data
+   - ✅ Can access all victim's data and applications
    - ✅ Can perform actions as victim
-   - ✅ **No password needed**
+   - ✅ **No password needed** - Session hijack successful!
+
+**Troubleshooting:**
+
+❌ **If still shows login page after refresh:**
+
+**Problem 1: Domain Mismatch**
+- Check if you used `localhost` in step 1 but `127.0.0.1` in step 3
+- **Solution**: Use `localhost` in BOTH windows
+
+**Problem 2: Incomplete Cookie Copy**
+- Cookie value might be truncated (should be 200+ characters)
+- **Solution**: Triple-click in Value field to select all, then copy
+
+**Problem 3: Cookie Not Saved**
+- Browser might not have saved the cookie
+- **Solution**: After adding cookie, look for it in the list. If missing, try Console method:
+  ```javascript
+  // In incognito DevTools Console (F12 → Console):
+  document.cookie = "session=YOUR_COOKIE_VALUE_HERE; path=/";
+  // Then refresh (F5)
+  ```
+
+**Verify Cookie Validity:**
+```powershell
+# Run this to test if cookie is valid:
+python debug_session.py
+# Paste cookie value when prompted
+```
 
 ---
 
@@ -325,8 +367,8 @@ data.csv && echo HACKED
 
 1. **Before Login:**
 
-   - Go to `http://127.0.0.1:5000/login` (NOT logged in)
-   - Open DevTools → Application → Cookies
+   - Go to `http://localhost:5000/login` (NOT logged in)
+   - Open DevTools → Application → Cookies → `http://localhost:5000`
    - Note: Flask creates session cookie even before login
    - Copy this pre-auth session value
 2. **Login Process:**
